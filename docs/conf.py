@@ -1,7 +1,7 @@
 """Sphinx configuration."""
 project = "Embody Serial Communicator"
-author = "Espen Westgaard"
-copyright = "2022, Espen Westgaard"
+author = "Aidee Health"
+copyright = "2022, Aidee Health"
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",

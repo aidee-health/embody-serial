@@ -37,7 +37,7 @@ Request features on the [Issue Tracker].
 
 ## How to set up your development environment
 
-You need Python 3.7+ and the following tools:
+You need Python 3.9+ and the following tools:
 
 - [Poetry]
 - [Nox]
@@ -94,7 +94,7 @@ Open a [pull request] to submit changes to this project.
 Your pull request needs to meet the following guidelines for acceptance:
 
 - The Nox test suite must pass without errors and warnings.
-- Include unit tests. This project maintains 100% code coverage.
+- Include unit tests. This project maintains ~ 100% code coverage.
 - If your changes add functionality, update the documentation accordingly.
 
 Feel free to submit early, though—we can always iterate on this.
@@ -107,6 +107,16 @@ $ nox --session=pre-commit -- install
 
 It is recommended to open an issue before starting work on anything.
 This will allow a chance to talk it over with the owners and validate your approach.
+
+## Resources
+
+* [Python Package tutorial](https://packaging.python.org/en/latest/tutorials/packaging-projects/)
+* [Best practices for project structure according to pytest](https://docs.pytest.org/en/latest/explanation/goodpractices.html)
+* [Using GitHub as a private PiPI server](https://medium.com/network-letters/using-github-as-a-private-python-package-index-server-798a6e1cfdef)
+* [Project structure - rationale and best practice](https://blog.ionelmc.ro/2014/05/25/python-packaging)
+* [Hypermodern Cookiecutter Documentation](https://cookiecutter-hypermodern-python.readthedocs.io/)
+* [Hypermodern Cookiecutter GitHub](https://github.com/cjolowicz/cookiecutter-hypermodern-python)
+
 
 [pull request]: https://github.com/aidee-health/embody-serial-communicator/pulls
 
