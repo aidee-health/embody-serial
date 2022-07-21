@@ -1,0 +1,14 @@
+{
+  "_output_dir": "/Users/espenwestgaard/workspaces/hypersension/embody-serial-communicator",
+  "_template": "gh:cjolowicz/cookiecutter-hypermodern-python",
+  "author": "Espen Westgaard",
+  "copyright_year": "2022",
+  "development_status": "Development Status :: 3 - Alpha",
+  "email": "espen@aidee.io",
+  "friendly_name": "Embody Serial Communicator",
+  "github_user": "aidee-health",
+  "license": "MIT",
+  "package_name": "embodyserial",
+  "project_name": "embody-serial-communicator",
+  "version": "0.1.0"
+}
