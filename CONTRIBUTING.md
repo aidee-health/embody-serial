@@ -117,7 +117,6 @@ This will allow a chance to talk it over with the owners and validate your appro
 - [Hypermodern Cookiecutter Documentation](https://cookiecutter-hypermodern-python.readthedocs.io/)
 - [Hypermodern Cookiecutter GitHub](https://github.com/cjolowicz/cookiecutter-hypermodern-python)
 
-
 [pull request]: https://github.com/aidee-health/embody-serial-communicator/pulls
 
 <!-- github-only -->
