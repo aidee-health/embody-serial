@@ -110,12 +110,12 @@ This will allow a chance to talk it over with the owners and validate your appro
 
 ## Resources
 
-* [Python Package tutorial](https://packaging.python.org/en/latest/tutorials/packaging-projects/)
-* [Best practices for project structure according to pytest](https://docs.pytest.org/en/latest/explanation/goodpractices.html)
-* [Using GitHub as a private PiPI server](https://medium.com/network-letters/using-github-as-a-private-python-package-index-server-798a6e1cfdef)
-* [Project structure - rationale and best practice](https://blog.ionelmc.ro/2014/05/25/python-packaging)
-* [Hypermodern Cookiecutter Documentation](https://cookiecutter-hypermodern-python.readthedocs.io/)
-* [Hypermodern Cookiecutter GitHub](https://github.com/cjolowicz/cookiecutter-hypermodern-python)
+- [Python Package tutorial](https://packaging.python.org/en/latest/tutorials/packaging-projects/)
+- [Best practices for project structure according to pytest](https://docs.pytest.org/en/latest/explanation/goodpractices.html)
+- [Using GitHub as a private PiPI server](https://medium.com/network-letters/using-github-as-a-private-python-package-index-server-798a6e1cfdef)
+- [Project structure - rationale and best practice](https://blog.ionelmc.ro/2014/05/25/python-packaging)
+- [Hypermodern Cookiecutter Documentation](https://cookiecutter-hypermodern-python.readthedocs.io/)
+- [Hypermodern Cookiecutter GitHub](https://github.com/cjolowicz/cookiecutter-hypermodern-python)
 
 
 [pull request]: https://github.com/aidee-health/embody-serial-communicator/pulls
