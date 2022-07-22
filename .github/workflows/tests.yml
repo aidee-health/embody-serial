@@ -145,4 +145,3 @@ jobs:
       - name: Create coverage report
         run: |
           nox --session=coverage -- xml
-
