@@ -38,6 +38,11 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
+      - name: Add ssh agent for access to private repo embody codec
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
       - name: Upgrade pip
         run: |
           pip install --constraint=.github/workflows/constraints.txt pip
@@ -145,6 +150,3 @@ jobs:
       - name: Create coverage report
         run: |
           nox --session=coverage -- xml
-
-      - name: Upload coverage report
-        uses: codecov/codecov-action@v3.1.0
