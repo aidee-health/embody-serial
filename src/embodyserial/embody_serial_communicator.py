@@ -1,5 +1,8 @@
+import concurrent.futures
 import logging
 import serial
+from serial.serialutil import SerialException
+import serial.tools.list_ports
 import struct
 from concurrent.futures import ThreadPoolExecutor
 import threading
@@ -34,12 +37,26 @@ class ResponseMessageListener:
 
 
 class EmbodySerialCommunicator:
-
-    def __init__(self, serial_port: str, msg_listener: MessageListener, rsp_msg_listener: ResponseMessageListener):
+    """
+    Main class for setting up communication with an EmBody device. If serial_port is not set, the first port identified
+    with proper manufacturer name is used.
+    """
+    def __init__(self, serial_port: str = None, msg_listener: MessageListener = None,
+                 rsp_msg_listener: ResponseMessageListener = None):
+        if serial_port:
+            self._port = serial_port
+        else:
+            self._port = EmbodySerialCommunicator._find_serial_port()
+        if not self._port:
+            raise SerialException("Serial port not found")
+        logging.info(f"Using serial port {self._port}")
         # todo: determine proper port (by input or automatically determine)
-        self._lock = threading.Lock()
-        self.__serial = serial.Serial(port=serial_port, baudrate=115200)
+        self._connection_lock = threading.Lock()
+        self._send_lock = threading.Lock()
+        self.__serial = serial.Serial(port=self._port, baudrate=115200)
         self.__connected = True
+        self.__response_event = threading.Event()
+        self.__current_response_message: codec.Message = None
         # setup executors
         self.__send_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="send-worker")
         self.__message_listener_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rcv-worker")
@@ -54,20 +71,39 @@ class EmbodySerialCommunicator:
         reader_thread.start()
 
     def send_message(self, msg: codec.Message):
-        # TODO: Submit to send worker
-        if not self.__connected:
-            return
-        logging.debug(f"Sending message: {msg}, encoded: {msg.encode().hex()}")
-        self.__serial.write(msg.encode())
+        self._send_async(msg, False)
 
-    def send_message_and_wait_for_response(self):
-        # TODO: use future, handle exceptions as well
-        return
+    def send_message_and_wait_for_response(self, msg: codec.Message, timeout=30) -> codec.Message:
+        future = self._send_async(msg, True)
+        try:
+            return future.result(timeout)
+        except TimeoutError as to:
+            logging.warning(f"No response received for message: {msg}", exc_info=False)
+            return None
+
+    def _send_async(self, msg: codec.Message, wait_for_response: bool = True) -> concurrent.futures.Future:
+        return self.__send_executor.submit(self._do_send, msg, wait_for_response)
+
+    def _do_send(self, msg: codec.Message, wait_for_response: bool = True) -> codec.Message:
+        with self._send_lock:
+            if not self.__connected:
+                return None
+            logging.debug(f"Sending message: {msg}, encoded: {msg.encode().hex()}")
+            try:
+                self.__response_event.clear()
+                self.__serial.write(msg.encode())
+            except serial.SerialException as e:
+                logging.warning("Error sending message", exc_info=False)
+                return None
+            if wait_for_response:
+                if self.__response_event.wait(30):
+                    return self.__current_response_message
+            return None
 
     def shutdown(self):
         # shutdown serial connection
         # shutdown all threads/executors
-        with self._lock:
+        with self._connection_lock:
             if not self.__connected:
                 return
             self.__connected = False
@@ -75,7 +111,6 @@ class EmbodySerialCommunicator:
             self.__message_listener_executor.shutdown(wait=False, cancel_futures=False)
             self.__response_message_listener_executor.shutdown(wait=False, cancel_futures=False)
             self.__serial.close()
-        return
 
     def handle_incoming_message(self, msg: codec.Message):
         if msg.msg_type < 0x80:
@@ -99,6 +134,8 @@ class EmbodySerialCommunicator:
 
     def _handle_response_message(self, msg: codec.Message):
         logging.info(f"New response message received: {msg}")
+        self.__current_response_message = msg
+        self.__response_event.set()
         if len(self.__response_message_listeners) == 0:
             return
         for listener in self.__response_message_listeners:
@@ -116,6 +153,21 @@ class EmbodySerialCommunicator:
         logging.info(f"Handle disconnected")
         # todo (Espen - 20220726): consider notifying clients with a connection listener
         self.shutdown()
+
+    @staticmethod
+    def _find_serial_port() -> str:
+        """Find first matching serial port name"""
+        manufacturers = ['Datek', 'Aidee']
+        all_available_ports = serial.tools.list_ports.comports()
+        if len(all_available_ports) == 0:
+            logging.warning("No serial ports available")
+            return None
+        for port in all_available_ports:
+            if not port.manufacturer:
+                continue
+            if any(manufacturer in port.manufacturer for manufacturer in manufacturers):
+                return port.device
+        return None
 
 
 class ReaderThread(threading.Thread):
@@ -159,11 +211,11 @@ class ReaderThread(threading.Thread):
                 logging.debug(f"RECEIVE: Received raw msg: {raw_message.hex()}")
             except serial.SerialException as e:
                 # probably some I/O problem such as disconnected USB serial adapters -> exit
-                logging.warning(f"Error reading from socket", exc_info=False)
+                logging.info(f"Serial port is closed (SerialException)", exc_info=False)
                 error = e
                 break
             except OSError as ose:
-                logging.warning(f"Error reading from socket", exc_info=False)
+                logging.warning(f"OS Error reading from socket (OSError)", exc_info=False)
                 break
             else:
                 if raw_message:
@@ -186,7 +238,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(thread)d/%(threadName)s] %(message)s")
 
     class DemoMessageListener(MessageListener, ResponseMessageListener):
-
+        """Implement listener callback methods"""
         def message_received(self, msg: codec.Message):
             logging.info(f"Message received: {msg}")
 
@@ -194,8 +246,8 @@ if __name__ == "__main__":
             logging.info(f"Response message received: {msg}")
 
     logging.info("Setting up communicator")
-    communicator = EmbodySerialCommunicator(serial_port="/dev/tty.usbmodem3101", msg_listener=DemoMessageListener(),
-                                            rsp_msg_listener=DemoMessageListener())
-    communicator.send_message(codec.ListFiles())
-    time.sleep(30)
+    communicator = EmbodySerialCommunicator(msg_listener=DemoMessageListener(), rsp_msg_listener=DemoMessageListener())
+    response = communicator.send_message_and_wait_for_response(codec.ListFiles())
+    logging.info(f"Response received directly: {response}")
+    time.sleep(10)
     communicator.shutdown()
