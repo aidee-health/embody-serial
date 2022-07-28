@@ -14,21 +14,8 @@ import serial.tools.list_ports
 from embodycodec import codec
 from serial.serialutil import SerialException
 
-
-class MessageListener:
-    """Listener interface for receiving incoming messages"""
-
-    def message_received(self, msg: codec.Message) -> None:
-        """Process received message"""
-        pass
-
-
-class ResponseMessageListener:
-    """Listener interface for receiving incoming response messages"""
-
-    def response_message_received(self, msg: codec.Message) -> None:
-        """Process received response message"""
-        pass
+from embodyserial.listeners import MessageListener
+from embodyserial.listeners import ResponseMessageListener
 
 
 class EmbodySerialCommunicator:
@@ -111,8 +98,7 @@ class EmbodySerialCommunicator:
             return None
 
     def shutdown(self) -> None:
-        # shutdown serial connection
-        # shutdown all threads/executors
+        """Shutdown serial connection and all threads/executors."""
         with self._connection_lock:
             if not self.__connected:
                 return
@@ -259,8 +245,6 @@ class ReaderThread(threading.Thread):
 
 if __name__ == "__main__":
     """Main method for demo and testing"""
-    import time
-
     logging.basicConfig(
         level=logging.DEBUG,
         format="%(asctime)s [%(thread)d/%(threadName)s] %(message)s",
@@ -281,5 +265,4 @@ if __name__ == "__main__":
     )
     response = communicator.send_message_and_wait_for_response(codec.ListFiles())
     logging.info(f"Response received directly: {response}")
-    time.sleep(10)
     communicator.shutdown()
