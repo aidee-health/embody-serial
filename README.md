@@ -1,30 +1,29 @@
 # Embody Serial Communicator
 
-[![Read the documentation at https://embody-serial-communicator.readthedocs.io/](https://img.shields.io/readthedocs/embody-serial-communicator/latest.svg?label=Read%20the%20Docs)][read the docs]
 [![Tests](https://github.com/aidee-health/embody-serial-communicator/workflows/Tests/badge.svg)][tests]
-[![Codecov](https://codecov.io/gh/aidee-health/embody-serial-communicator/branch/main/graph/badge.svg)][codecov]
 
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)][pre-commit]
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)][black]
 
-[read the docs]: https://embody-serial-communicator.readthedocs.io/
 [tests]: https://github.com/aidee-health/embody-serial-communicator/actions?workflow=Tests
-[codecov]: https://app.codecov.io/gh/aidee-health/embody-serial-communicator
 [pre-commit]: https://github.com/pre-commit/pre-commit
 [black]: https://github.com/psf/black
 
 ## Features
 
-- Connects to an embody device over the serial port
-- Uses the embody protocol to communicate with the device
-- Provides several send methods for synch/async send, send/receive, etc
-- Provides callback interfaces for received messages, connect/disconnect, etc
+- Connects to an EmBody device over the serial port
+- Uses the EmBody protocol to communicate with the device
+- Integrates with [the EmBody Protocol Codec](https://github.com/aidee-health/embody-protocol-codec) project
+- Asynchronous send without having to wait for response
+- Synchronous send where response message is returned
+- Provides callback interfaces for incoming messages, response messages and connect/disconnect
 - All methods and callbacks are threadsafe
 - Separate threads for send, receive and callback processing
+- Type safe code using [mypy](https://mypy.readthedocs.io/) for type checking
 
 ## Requirements
 
-- TODO
+- Python 3.9 or newer
 
 ## Installation
 
@@ -36,7 +35,27 @@ $ pip install git+https://github.com/aidee-health/embody-serial-communicator@mai
 
 ## Usage
 
-Please see the [Command-line Reference] for details.
+A very basic example where you send a message request and get a response:
+
+```python
+from embodyserial import EmbodySerialCommunicator
+from embodycodec import codec
+
+communicator = EmbodySerialCommunicator()
+response = communicator.send_message_and_wait_for_response(codec.ListFiles())
+print(f"Received response: {response}")
+communicator.shutdown()
+```
+
+If you want to see more of what happens under the hood, activate debug logging:
+
+```python
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+```
+
+Please see the [Command-line Reference] for more details.
 
 ## Contributing
 
