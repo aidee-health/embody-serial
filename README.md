@@ -31,7 +31,7 @@
 You can install _Embody Serial Communicator_ via [pip] from private Github repo:
 
 ```console
-$ pip install git+https://github.com/aidee-health/embody-serial-communicator@main#egg=embodyserial
+$ pip install "git+https://github.com/aidee-health/embody-serial-communicator@main#egg=embodyserial"
 ```
 
 ## Usage
