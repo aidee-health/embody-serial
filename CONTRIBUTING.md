@@ -116,6 +116,7 @@ This will allow a chance to talk it over with the owners and validate your appro
 - [Project structure - rationale and best practice](https://blog.ionelmc.ro/2014/05/25/python-packaging)
 - [Hypermodern Cookiecutter Documentation](https://cookiecutter-hypermodern-python.readthedocs.io/)
 - [Hypermodern Cookiecutter GitHub](https://github.com/cjolowicz/cookiecutter-hypermodern-python)
+- [Threading Howto](https://superfastpython.com/threading-in-python/)
 
 [pull request]: https://github.com/aidee-health/embody-serial-communicator/pulls
 
