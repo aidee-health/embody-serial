@@ -29,7 +29,7 @@ Pygments = ">=2.10.0"
 black = ">=21.10b0"
 coverage = {extras = ["toml"], version = ">=6.2"}
 darglint = ">=1.8.1"
-flake8 = ">=4.0.1"
+flake8 = ">=4.0.1,<5.0.0" # Espen: pre-commit run --all-files --hook-stage=manual --show-diff-on-failure fails with 5.0
 flake8-bandit = ">=2.1.2"
 flake8-bugbear = ">=21.9.2"
 flake8-docstrings = ">=1.6.0"
