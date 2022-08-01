@@ -39,13 +39,13 @@ $ pip install "git+https://github.com/aidee-health/embody-serial-communicator@ma
 A very basic example where you send a message request and get a response:
 
 ```python
-from embodyserial import EmbodySerialCommunicator
+from embodyserial import communicator
 from embodycodec import codec
 
-communicator = EmbodySerialCommunicator()
-response = communicator.send_message_and_wait_for_response(codec.ListFiles())
+comm = communicator.EmbodySerialCommunicator()
+response = comm.send_message_and_wait_for_response(codec.ListFiles())
 print(f"Received response: {response}")
-communicator.shutdown()
+comm.shutdown()
 ```
 
 If you want to see more of what happens under the hood, activate debug logging:
