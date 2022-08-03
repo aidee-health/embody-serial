@@ -208,7 +208,7 @@ develop = false
 type = "git"
 url = "https://github.com/aidee-health/embody-protocol-codec.git"
 reference = "main"
-resolved_reference = "95d797420df44fe2c6936ef491d4adda1c4c4f9e"
+resolved_reference = "24b168d0a8c8f4584df07d52ce3a433b48b7cc21"
 
 [[package]]
 name = "filelock"
@@ -1128,7 +1128,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "864abfea040da05a8ca6c719869ce77b209179466a72c89c132dd3b8722c4915"
+content-hash = "39283aaa14a568581c20d5a8171a0fc8f021a8b51d9f222751de97f90f0ee353"
 
 [metadata.files]
 alabaster = [
