@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 import serial
 import serial.tools.list_ports
 from embodycodec import codec
+from serial.serialutil import SerialBase
 from serial.serialutil import SerialException
 
 from embodyserial.listeners import ConnectionListener
@@ -26,16 +27,22 @@ class EmbodySerialCommunicator(ConnectionListener):
     """
 
     def __init__(
-        self, serial_port: str = None, msg_listener: MessageListener = None
+        self,
+        serial_port: str = None,
+        msg_listener: MessageListener = None,
+        serial_instance: SerialBase = None,
     ) -> None:
         if serial_port:
             self.__port = serial_port
-        else:
+            logging.info(f"Using serial port {self.__port}")
+        elif not serial_instance:
             self.__port = EmbodySerialCommunicator.__find_serial_port()
-        logging.info(f"Using serial port {self.__port}")
-        # todo: determine proper port (by input or automatically determine)
+            logging.info(f"Using serial port {self.__port}")
         self.__shutdown_lock = threading.Lock()
-        self.__serial = serial.Serial(port=self.__port, baudrate=115200)
+        if serial_instance:
+            self.__serial = serial_instance
+        else:
+            self.__serial = serial.Serial(port=self.__port, baudrate=115200)
         self.__connected = True
         self.__sender = _MessageSender(self.__serial)
         self.__reader = _ReaderThread(serial_instance=self.__serial)
@@ -73,10 +80,14 @@ class EmbodySerialCommunicator(ConnectionListener):
     def __find_serial_port() -> str:
         """Find first matching serial port name."""
         manufacturers = ["Datek", "Aidee"]
+        descriptions = ["IsenseU", "G3"]
         all_available_ports = serial.tools.list_ports.comports()
         if len(all_available_ports) == 0:
             raise SerialException("No available serial ports")
         for port in all_available_ports:
+            for description in descriptions:
+                if description in port.description:
+                    return port.device
             if not port.manufacturer:
                 continue
             if any(manufacturer in port.manufacturer for manufacturer in manufacturers):
@@ -90,7 +101,7 @@ class _MessageSender(ResponseMessageListener):
     This includes thread safety, async handling and windowing
     """
 
-    def __init__(self, serial_instance: serial.Serial) -> None:
+    def __init__(self, serial_instance: SerialBase) -> None:
         self.__serial = serial_instance
         self.__send_lock = threading.Lock()
         self.__response_event = threading.Event()
@@ -158,7 +169,7 @@ class _ReaderThread(threading.Thread):
     stop() this thread and continue the serial port instance otherwise.
     """
 
-    def __init__(self, serial_instance: serial.Serial) -> None:
+    def __init__(self, serial_instance: SerialBase) -> None:
         """Initialize thread."""
         super().__init__()
         self.daemon = True
