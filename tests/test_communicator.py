@@ -17,7 +17,7 @@ def test_send_receive_sync() -> None:
         serial_port="Dummy", serial_instance=serial
     )
     response = communicator.send_message_and_wait_for_response(
-        msg=codec.Heartbeat(), timeout=5
+        msg=codec.Heartbeat(), timeout=3
     )
     assert response
     assert isinstance(response, codec.HeartbeatResponse)
