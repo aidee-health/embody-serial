@@ -8,6 +8,7 @@ import logging
 import struct
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from typing import Optional
 
 import serial
 import serial.tools.list_ports
@@ -28,9 +29,9 @@ class EmbodySerialCommunicator(ConnectionListener):
 
     def __init__(
         self,
-        serial_port: str = None,
-        msg_listener: MessageListener = None,
-        serial_instance: SerialBase = None,
+        serial_port: Optional[str] = None,
+        msg_listener: Optional[MessageListener] = None,
+        serial_instance: Optional[SerialBase] = None,
     ) -> None:
         if serial_port:
             self.__port = serial_port
@@ -128,7 +129,7 @@ class _MessageSender(ResponseMessageListener):
     def send_message_and_wait_for_response(
         self, msg: codec.Message, timeout: int = 30
     ) -> codec.Message:
-        future = self.__send_async(msg, True)
+        future = self.__send_async(msg, timeout)
         try:
             return future.result(timeout)
         except TimeoutError:
@@ -139,12 +140,12 @@ class _MessageSender(ResponseMessageListener):
             return None
 
     def __send_async(
-        self, msg: codec.Message, wait_for_response: bool = True
+        self, msg: codec.Message, wait_for_response_secs: Optional[int] = None
     ) -> concurrent.futures.Future[codec.Message]:
-        return self.__send_executor.submit(self.__do_send, msg, wait_for_response)
+        return self.__send_executor.submit(self.__do_send, msg, wait_for_response_secs)
 
     def __do_send(
-        self, msg: codec.Message, wait_for_response: bool = True
+        self, msg: codec.Message, wait_for_response_secs: Optional[int] = None
     ) -> codec.Message:
         with self.__send_lock:
             if not self.__serial.is_open:
@@ -156,8 +157,8 @@ class _MessageSender(ResponseMessageListener):
             except serial.SerialException as e:
                 logging.warning(f"Error sending message: {str(e)}", exc_info=False)
                 return None
-            if wait_for_response:
-                if self.__response_event.wait(30):
+            if wait_for_response_secs:
+                if self.__response_event.wait(wait_for_response_secs):
                     return self.__current_response_message
             return None
 
