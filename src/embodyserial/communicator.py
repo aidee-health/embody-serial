@@ -58,7 +58,7 @@ class EmbodySerialCommunicator(ConnectionListener):
 
     def send_message_and_wait_for_response(
         self, msg: codec.Message, timeout: int = 30
-    ) -> codec.Message:
+    ) -> Optional[codec.Message]:
         return self.__sender.send_message_and_wait_for_response(msg, timeout)
 
     def shutdown(self) -> None:
@@ -106,7 +106,7 @@ class _MessageSender(ResponseMessageListener):
         self.__serial = serial_instance
         self.__send_lock = threading.Lock()
         self.__response_event = threading.Event()
-        self.__current_response_message: codec.Message = None
+        self.__current_response_message: Optional[codec.Message] = None
         self.__send_executor = ThreadPoolExecutor(
             max_workers=1, thread_name_prefix="send-worker"
         )
@@ -128,7 +128,7 @@ class _MessageSender(ResponseMessageListener):
 
     def send_message_and_wait_for_response(
         self, msg: codec.Message, timeout: int = 30
-    ) -> codec.Message:
+    ) -> Optional[codec.Message]:
         future = self.__send_async(msg, timeout)
         try:
             return future.result(timeout)
@@ -141,12 +141,12 @@ class _MessageSender(ResponseMessageListener):
 
     def __send_async(
         self, msg: codec.Message, wait_for_response_secs: Optional[int] = None
-    ) -> concurrent.futures.Future[codec.Message]:
+    ) -> concurrent.futures.Future[Optional[codec.Message]]:
         return self.__send_executor.submit(self.__do_send, msg, wait_for_response_secs)
 
     def __do_send(
         self, msg: codec.Message, wait_for_response_secs: Optional[int] = None
-    ) -> codec.Message:
+    ) -> Optional[codec.Message]:
         with self.__send_lock:
             if not self.__serial.is_open:
                 return None
