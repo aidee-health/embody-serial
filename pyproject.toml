@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "embody-serial-communicator"
-version = "1.0.2"
+version = "1.0.3"
 description = "Embody Serial Communicator"
 authors = ["Espen Westgaard <espen@aidee.io>"]
 license = "MIT"
