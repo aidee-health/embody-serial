@@ -62,7 +62,7 @@ source = ["embodyserial", "tests"]
 
 [tool.coverage.report]
 show_missing = true
-fail_under = 5 # Increase once we have refactored and added tests
+fail_under = 2 # Increase once we have refactored and added tests
 
 [tool.isort]
 profile = "black"
