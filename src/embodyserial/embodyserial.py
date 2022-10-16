@@ -7,6 +7,8 @@ import concurrent.futures
 import logging
 import struct
 import threading
+from abc import ABC
+from abc import abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
@@ -21,7 +23,21 @@ from embodyserial.listeners import MessageListener
 from embodyserial.listeners import ResponseMessageListener
 
 
-class EmbodySerial(ConnectionListener):
+class EmbodySender(ABC):
+    """Listener interface for being notified of incoming messages."""
+
+    @abstractmethod
+    def send_async(self, msg: codec.Message) -> None:
+        """Send a message. do not wait for a response"""
+        pass
+
+    @abstractmethod
+    def send(self, msg: codec.Message, timeout: int = 30) -> Optional[codec.Message]:
+        """Send a message. wait for a response or timeout"""
+        return None
+
+
+class EmbodySerial(ConnectionListener, EmbodySender):
     """Main class for setting up communication with an EmBody device.
 
     If serial_port is not set, the first port identified with proper manufacturer name is used.
@@ -53,12 +69,12 @@ class EmbodySerial(ConnectionListener):
             self.__reader.add_message_listener(msg_listener)
         self.__reader.start()
 
-    def send_message(self, msg: codec.Message) -> None:
+    def send_async(self, msg: codec.Message) -> None:
+        """Send a message. do not wait for a response"""
         self.__sender.send_message(msg)
 
-    def send_message_and_wait_for_response(
-        self, msg: codec.Message, timeout: int = 30
-    ) -> Optional[codec.Message]:
+    def send(self, msg: codec.Message, timeout: int = 30) -> Optional[codec.Message]:
+        """Send a message. Wait for a response or timeout"""
         return self.__sender.send_message_and_wait_for_response(msg, timeout)
 
     def shutdown(self) -> None:
@@ -328,6 +344,6 @@ if __name__ == "__main__":
 
     logging.info("Setting up communicator")
     communicator = EmbodySerial(msg_listener=DemoMessageListener())
-    response = communicator.send_message_and_wait_for_response(codec.ListFiles())
+    response = communicator.send(codec.ListFiles())
     logging.info(f"Response received directly: {response}")
     communicator.shutdown()
