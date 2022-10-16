@@ -6,16 +6,14 @@ import time
 from embodycodec import codec
 from serial.serialutil import SerialBase
 
-from embodyserial import communicator as serialcomm
+from embodyserial import embodyserial as serialcomm
 
 
 def test_send_receive_sync() -> None:
     """Test a send/receive cycle."""
     heartbeat_response = bytes.fromhex("8100059053")
     serial = DummySerial(heartbeat_response)
-    communicator = serialcomm.EmbodySerialCommunicator(
-        serial_port="Dummy", serial_instance=serial
-    )
+    communicator = serialcomm.EmbodySerial(serial_port="Dummy", serial_instance=serial)
     response = communicator.send_message_and_wait_for_response(
         msg=codec.Heartbeat(), timeout=3
     )

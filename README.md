@@ -1,11 +1,11 @@
-# Embody Serial Communicator
+# Embody Serial
 
-[![Tests](https://github.com/aidee-health/embody-serial-communicator/workflows/Tests/badge.svg)][tests]
+[![Tests](https://github.com/aidee-health/embody-serial/workflows/Tests/badge.svg)][tests]
 
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)][pre-commit]
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)][black]
 
-[tests]: https://github.com/aidee-health/embody-serial-communicator/actions?workflow=Tests
+[tests]: https://github.com/aidee-health/embody-serial/actions?workflow=Tests
 [pre-commit]: https://github.com/pre-commit/pre-commit
 [black]: https://github.com/psf/black
 
@@ -31,7 +31,7 @@
 You can install _Embody Serial Communicator_ via [pip] from private Github repo:
 
 ```console
-$ pip install "git+https://github.com/aidee-health/embody-serial-communicator@main#egg=embodyserial"
+$ pip install "git+https://github.com/aidee-health/embody-serial@main#egg=embodyserial"
 ```
 
 ## Usage
@@ -39,11 +39,11 @@ $ pip install "git+https://github.com/aidee-health/embody-serial-communicator@ma
 A very basic example where you send a message request and get a response:
 
 ```python
-from embodyserial import communicator
+from embodyserial import embodyserial
 from embodycodec import codec
 
-comm = communicator.EmbodySerialCommunicator()
-response = comm.send_message_and_wait_for_response(codec.ListFiles())
+ser = embodyserial.EmbodySerial()
+response = ser.send_message_and_wait_for_response(codec.ListFiles())
 print(f"Received response: {response}")
 comm.shutdown()
 ```
@@ -68,11 +68,11 @@ To learn more, see the [Contributor Guide].
 If you encounter any problems,
 please [file an issue] along with a detailed description.
 
-[file an issue]: https://github.com/aidee-health/embody-serial-communicator/issues
+[file an issue]: https://github.com/aidee-health/embody-serial/issues
 [pip]: https://pip.pypa.io/
 
 <!-- github-only -->
 
-[license]: https://github.com/aidee-health/embody-serial-communicator/blob/main/LICENSE
-[contributor guide]: https://github.com/aidee-health/embody-serial-communicator/blob/main/CONTRIBUTING.md
-[command-line reference]: https://embody-serial-communicator.readthedocs.io/en/latest/usage.html
+[license]: https://github.com/aidee-health/embody-serial/blob/main/LICENSE
+[contributor guide]: https://github.com/aidee-health/embody-serial/blob/main/CONTRIBUTING.md
+[command-line reference]: https://embody-serial.readthedocs.io/en/latest/usage.html

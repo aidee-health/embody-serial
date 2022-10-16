@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "embody-serial-communicator"
+name = "embody-serial"
 version = "1.0.3"
 description = "Embody Serial Communicator"
 authors = ["Espen Westgaard <espen@aidee.io>"]
 license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/aidee-health/embody-serial-communicator"
-repository = "https://github.com/aidee-health/embody-serial-communicator"
+homepage = "https://github.com/aidee-health/embody-serial"
+repository = "https://github.com/aidee-health/embody-serial"
 packages = [
     { include = "embodyserial", from = "src" },
 ]
@@ -15,7 +15,7 @@ classifiers = [
 ]
 
 [tool.poetry.urls]
-Changelog = "https://github.com/aidee-health/embody-serial-communicator/releases"
+Changelog = "https://github.com/aidee-health/embody-serial/releases"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.10"
@@ -50,7 +50,7 @@ xdoctest = {extras = ["colors"], version = ">=0.15.10"}
 myst-parser = {version = ">=0.16.1"}
 
 [tool.poetry.scripts]
-embody-serial-communicator = "embodyserial.__main__:main"
+embody-serial = "embodyserial.__main__:main"
 
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]

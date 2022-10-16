@@ -21,7 +21,7 @@ from embodyserial.listeners import MessageListener
 from embodyserial.listeners import ResponseMessageListener
 
 
-class EmbodySerialCommunicator(ConnectionListener):
+class EmbodySerial(ConnectionListener):
     """Main class for setting up communication with an EmBody device.
 
     If serial_port is not set, the first port identified with proper manufacturer name is used.
@@ -37,7 +37,7 @@ class EmbodySerialCommunicator(ConnectionListener):
             self.__port = serial_port
             logging.info(f"Using serial port {self.__port}")
         elif not serial_instance:
-            self.__port = EmbodySerialCommunicator.__find_serial_port()
+            self.__port = EmbodySerial.__find_serial_port()
             logging.info(f"Using serial port {self.__port}")
         self.__shutdown_lock = threading.Lock()
         if serial_instance:
@@ -327,7 +327,7 @@ if __name__ == "__main__":
             logging.info(f"Response message received: {msg}")
 
     logging.info("Setting up communicator")
-    communicator = EmbodySerialCommunicator(msg_listener=DemoMessageListener())
+    communicator = EmbodySerial(msg_listener=DemoMessageListener())
     response = communicator.send_message_and_wait_for_response(codec.ListFiles())
     logging.info(f"Response received directly: {response}")
     communicator.shutdown()
