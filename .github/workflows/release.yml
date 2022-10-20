@@ -27,7 +27,7 @@ jobs:
           pip --version
 
       - name: Add ssh agent for access to private repo embody codec
-        uses: webfactory/ssh-agent@v0.5.4
+        uses: webfactory/ssh-agent@v0.7.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
