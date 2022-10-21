@@ -73,14 +73,18 @@ class EmbodySendHelper:
         response_attribute = self.__do_send_get_attribute_request(
             attributes.TemperatureAttribute.attribute_id
         )
-        return response_attribute.temp_celsius() if response_attribute else None
+        return (
+            response_attribute.temp_celsius()
+            if response_attribute
+            and isinstance(response_attribute, attributes.TemperatureAttribute)
+            else None
+        )
 
     def __do_send_get_attribute_request(
         self, attribute_id: int
     ) -> Optional[attributes.Attribute]:
         response = self.__sender.send(
-            codec.GetAttribute(attribute_id),
-            self.__send_timeout,
+            msg=codec.GetAttribute(attribute_id), timeout=self.__send_timeout
         )
         if response and isinstance(response, codec.GetAttributeResponse):
             return response.value

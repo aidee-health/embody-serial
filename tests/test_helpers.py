@@ -22,7 +22,7 @@ def test_get_current_time_success() -> None:
 
 def test_get_current_time_no_response() -> None:
     sender: helpers.EmbodySender = Mock()
-    sender.send = Mock(return_value=None)
+    sender.send = Mock(return_value=None)  # type: ignore
     send_helper = helpers.EmbodySendHelper(sender=sender)
     current_time = send_helper.get_current_time()
     assert current_time is None
@@ -31,7 +31,7 @@ def test_get_current_time_no_response() -> None:
 def test_get_current_time_with_exception() -> None:
     """Test successful get current time."""
     sender: helpers.EmbodySender = Mock()
-    sender.send = Mock(side_effect=SerialException)
+    sender.send = Mock(side_effect=SerialException)  # type: ignore
     send_helper = helpers.EmbodySendHelper(sender=sender)
     with pytest.raises(Exception):
         send_helper.get_current_time()
@@ -47,7 +47,7 @@ def test_get_serial_no_success() -> None:
 
 def __create_sender_mock(attr: attributes.Attribute) -> helpers.EmbodySender:
     sender: helpers.EmbodySender = Mock()
-    sender.send = Mock(
+    sender.send = Mock(  # type: ignore
         return_value=codec.GetAttributeResponse(
             attribute_id=attr.attribute_id,
             changed_at=int(datetime.now().timestamp() * 1000),
