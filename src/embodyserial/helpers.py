@@ -23,6 +23,6 @@ class EmbodySendHelper:
             self.__send_timeout,
         )
         if response and isinstance(response, codec.GetAttributeResponse):
-            return datetime.fromtimestamp(response.value / 1000, tz=timezone.utc)
+            return datetime.fromtimestamp(response.value.value / 1000, tz=timezone.utc)
         else:
             return None
