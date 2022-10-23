@@ -1,12 +1,30 @@
-"""Command-line interface."""
-import click
+"""Demonstrate the use of this package. Not intended as a standalone cli."""
+import logging
+
+from embodyserial.embodyserial import EmbodySerial
+from embodyserial.helpers import EmbodySendHelper
 
 
-@click.command()
-@click.version_option()
 def main() -> None:
-    """Embody Serial Communicator."""
+    """Main entry point."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(thread)d/%(threadName)s] %(message)s",
+    )
+
+    logging.info("Setting up serial communication")
+    embody_serial = EmbodySerial()
+    logging.info("Setting up send helper")
+    send_helper = EmbodySendHelper(sender=embody_serial)
+    logging.info(f"Serial no: {send_helper.get_serial_no()}")
+    logging.info(f"Vendor: {send_helper.get_vendor()}")
+    logging.info(f"Files on device: {send_helper.get_files()}")
+    logging.info(f"Model: {send_helper.get_model()}")
+    logging.info(f"Current time: {send_helper.get_current_time()}")
+    logging.info(f"Battery level: {send_helper.get_battery_level()}")
+    logging.info(f"Charge state: {send_helper.get_charge_state()}")
+    embody_serial.shutdown()
 
 
 if __name__ == "__main__":
-    main(prog_name="embody-serial-communicator")  # pragma: no cover
+    main()  # pragma: no cover
