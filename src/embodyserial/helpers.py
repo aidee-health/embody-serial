@@ -91,13 +91,14 @@ class EmbodySendHelper:
         response = self.__sender.send(
             msg=codec.ListFiles(), timeout=self.__send_timeout
         )
-        files = list()
+        files: list[str] = list()
         if response and isinstance(response, codec.ListFilesResponse):
             if len(response.files) == 0:
                 return files
             else:
                 for file in response.files:
                     files.append(str(file.file_name))
+                return files
         else:
             return files
 
@@ -166,6 +167,7 @@ class EmbodySendHelper:
 
     def __do_send_set_attribute_request(self, attr: attributes.Attribute) -> bool:
         response = self.__sender.send(
-            msg=codec.SetAttribute(attr.attribute_id), timeout=self.__send_timeout
+            msg=codec.SetAttribute(attribute_id=attr.attribute_id, value=attr),
+            timeout=self.__send_timeout,
         )
-        return response and isinstance(response, codec.SetAttributeResponse)
+        return response is not None and isinstance(response, codec.SetAttributeResponse)
