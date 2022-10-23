@@ -85,7 +85,7 @@ class EmbodySendHelper:
         response_attribute = self.__do_send_get_attribute_request(
             attributes.FirmwareVersionAttribute.attribute_id
         )
-        return response_attribute.value if response_attribute else None
+        return response_attribute.formatted_value() if response_attribute else None
 
     def get_files(self) -> list[str]:
         response = self.__sender.send(
@@ -133,13 +133,23 @@ class EmbodySendHelper:
         attr = attributes.TraceLevelAttribute(level)
         return self.__do_send_set_attribute_request(attr)
 
-    def reformat_disk(self, file_name: str) -> bool:
+    def reformat_disk(self) -> bool:
         response = self.__sender.send(
-            msg=codec.ReformatDisk, timeout=self.__send_timeout
+            msg=codec.ReformatDisk(), timeout=self.__send_timeout
         )
         return (
             True
             if response and isinstance(response, codec.ReformatDiskResponse)
+            else False
+        )
+
+    def delete_all_files(self) -> bool:
+        response = self.__sender.send(
+            msg=codec.DeleteAllFiles(), timeout=self.__send_timeout
+        )
+        return (
+            True
+            if response and isinstance(response, codec.DeleteAllFilesResponse)
             else False
         )
 

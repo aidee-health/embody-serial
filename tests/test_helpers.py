@@ -16,7 +16,6 @@ def test_get_current_time_success() -> None:
     sender = __create_sender_mock(attr=attributes.CurrentTimeAttribute(1666368870000))
     send_helper = helpers.EmbodySendHelper(sender=sender)
     current_time = send_helper.get_current_time()
-    assert current_time
     assert current_time == datetime.fromisoformat("2022-10-21 16:14:30.000+00:00")
 
 
@@ -41,8 +40,35 @@ def test_get_serial_no_success() -> None:
     sender = __create_sender_mock(attr=attributes.SerialNoAttribute(12345678))
     send_helper = helpers.EmbodySendHelper(sender=sender)
     serial_no = send_helper.get_serial_no()
-    assert serial_no
     assert serial_no == "0000000000bc614e"
+
+
+def test_get_battery_level() -> None:
+    sender = __create_sender_mock(attr=attributes.BatteryLevelAttribute(3))
+    send_helper = helpers.EmbodySendHelper(sender=sender)
+    battery_level = send_helper.get_battery_level()
+    assert battery_level == 3
+
+
+def test_get_vendor() -> None:
+    sender = __create_sender_mock(attr=attributes.VendorAttribute("Aidee"))
+    send_helper = helpers.EmbodySendHelper(sender=sender)
+    vendor = send_helper.get_vendor()
+    assert vendor == "Aidee"
+
+
+def test_get_model() -> None:
+    sender = __create_sender_mock(attr=attributes.ModelAttribute("Aidee Embody"))
+    send_helper = helpers.EmbodySendHelper(sender=sender)
+    model = send_helper.get_model()
+    assert model == "Aidee Embody"
+
+
+def test_get_firmware_version() -> None:
+    sender = __create_sender_mock(attr=attributes.FirmwareVersionAttribute(0x010203))
+    send_helper = helpers.EmbodySendHelper(sender=sender)
+    version = send_helper.get_firmware_version()
+    assert version == "01.02.03"
 
 
 def __create_sender_mock(attr: attributes.Attribute) -> helpers.EmbodySender:

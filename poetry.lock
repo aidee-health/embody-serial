@@ -189,7 +189,7 @@ conda = ["pyyaml"]
 
 [[package]]
 name = "embody-protocol-codec"
-version = "1.0.3"
+version = "1.0.4"
 description = "Embody Protocol Codec"
 category = "main"
 optional = false
@@ -199,8 +199,8 @@ develop = false
 [package.source]
 type = "git"
 url = "https://github.com/aidee-health/embody-protocol-codec.git"
-reference = "v1.0.3"
-resolved_reference = "1a98a893fb8d96aa55714155cbbbcbad44e3c70f"
+reference = "v1.0.4"
+resolved_reference = "52c82b70b10a0fe60df2ff6abf305141ca07262f"
 
 [[package]]
 name = "filelock"
@@ -1134,7 +1134,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "flake8 
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.9,<3.10"
-content-hash = "dfd2c28316308c61ef9f8a65a06810bf3d89ae2b9e4c8d0203f17e7ee59f6b2e"
+content-hash = "89aa83f8f0d6f2e2c8380f4340bad67dcc362cb2b2d3c23fcef8fb23ac036a65"
 
 [metadata.files]
 alabaster = [
