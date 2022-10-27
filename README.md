@@ -57,6 +57,42 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 ```
 
+## Using the application from the command line
+
+The application also supports command line arguments.
+
+Once installed with pip, type:
+
+```
+embody-serial --help
+```
+
+To see which options are available.
+
+### Example 1 - List all attribute values
+
+```shell
+embody-serial --device COM3 --get-all
+```
+
+### Example 2 - Get serial no of device
+
+```shell
+embody-serial --channel ble --device COM3 --get serialno
+```
+
+### Example 3 - List files over serial port
+
+```shell
+embody-serial --device /dev/cu.usbmodem2101 --list-files
+```
+
+### Example 3 - Set time current time (UTC)
+
+```shell
+embody-serial --device COM3 --set-time
+```
+
 ## Contributing
 
 Contributions are very welcome.

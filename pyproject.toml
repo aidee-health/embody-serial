@@ -48,7 +48,7 @@ xdoctest = {extras = ["colors"], version = ">=0.15.10"}
 myst-parser = {version = ">=0.16.1"}
 
 [tool.poetry.scripts]
-embody-serial = "embodyserial.__main__:main"
+embody-serial = "embodyserial.cli:main"
 
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]
