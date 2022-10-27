@@ -18,9 +18,9 @@ from embodycodec import codec
 from serial.serialutil import SerialBase
 from serial.serialutil import SerialException
 
-from embodyserial.listeners import ConnectionListener
-from embodyserial.listeners import MessageListener
-from embodyserial.listeners import ResponseMessageListener
+from .listeners import ConnectionListener
+from .listeners import MessageListener
+from .listeners import ResponseMessageListener
 
 
 class EmbodySender(ABC):

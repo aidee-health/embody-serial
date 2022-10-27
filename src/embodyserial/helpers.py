@@ -8,7 +8,7 @@ from embodycodec import attributes
 from embodycodec import codec
 from embodycodec import types
 
-from embodyserial.embodyserial import EmbodySender
+from .embodyserial import EmbodySender
 
 
 class EmbodySendHelper:

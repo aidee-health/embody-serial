@@ -1,8 +1,8 @@
 """Demonstrate the use of this package. Not intended as a standalone cli."""
 import logging
 
-from embodyserial.embodyserial import EmbodySerial
-from embodyserial.helpers import EmbodySendHelper
+from .embodyserial import EmbodySerial
+from .helpers import EmbodySendHelper
 
 
 def main() -> None:
