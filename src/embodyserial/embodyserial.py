@@ -18,9 +18,9 @@ from embodycodec import codec
 from serial.serialutil import SerialBase
 from serial.serialutil import SerialException
 
-from embodyserial.listeners import ConnectionListener
-from embodyserial.listeners import MessageListener
-from embodyserial.listeners import ResponseMessageListener
+from .listeners import ConnectionListener
+from .listeners import MessageListener
+from .listeners import ResponseMessageListener
 
 
 class EmbodySender(ABC):
@@ -32,7 +32,9 @@ class EmbodySender(ABC):
         pass
 
     @abstractmethod
-    def send(self, msg: codec.Message, timeout: int = 30) -> Optional[codec.Message]:
+    def send(
+        self, msg: codec.Message, timeout: Optional[int] = 30
+    ) -> Optional[codec.Message]:
         """Send a message. wait for a response or timeout"""
         return None
 
@@ -73,7 +75,9 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         """Send a message. do not wait for a response"""
         self.__sender.send_message(msg)
 
-    def send(self, msg: codec.Message, timeout: int = 30) -> Optional[codec.Message]:
+    def send(
+        self, msg: codec.Message, timeout: Optional[int] = 30
+    ) -> Optional[codec.Message]:
         """Send a message. Wait for a response or timeout"""
         return self.__sender.send_message_and_wait_for_response(msg, timeout)
 
@@ -143,7 +147,7 @@ class _MessageSender(ResponseMessageListener):
         self.__send_async(msg, False)
 
     def send_message_and_wait_for_response(
-        self, msg: codec.Message, timeout: int = 30
+        self, msg: codec.Message, timeout: Optional[int] = 30
     ) -> Optional[codec.Message]:
         future = self.__send_async(msg, timeout)
         try:

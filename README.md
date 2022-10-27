@@ -16,6 +16,7 @@
 - Integrates with [the EmBody Protocol Codec](https://github.com/aidee-health/embody-protocol-codec) project
 - Asynchronous send without having to wait for response
 - Synchronous send where response message is returned
+- Send facade for protocol agnostic communication with device
 - Provides callback interfaces for incoming messages, response messages and connect/disconnect
 - All methods and callbacks are threadsafe
 - Separate threads for send, receive and callback processing
@@ -31,7 +32,7 @@
 You can install _Embody Serial Communicator_ via [pip] from private Github repo:
 
 ```console
-$ pip install "git+https://github.com/aidee-health/embody-serial@main#egg=embodyserial"
+$ pip install "git+https://github.com/aidee-health/embody-serial@v1.0.4#egg=embodyserial"
 ```
 
 ## Usage
@@ -39,13 +40,13 @@ $ pip install "git+https://github.com/aidee-health/embody-serial@main#egg=embody
 A very basic example where you send a message request and get a response:
 
 ```python
-from embodyserial import embodyserial
-from embodycodec import codec
+from embodyserial.embodyserial import EmbodySerial
+from embodyserial.helpers import EmbodySendHelper
 
-ser = embodyserial.EmbodySerial()
-response = ser.send_message_and_wait_for_response(codec.ListFiles())
-print(f"Received response: {response}")
-comm.shutdown()
+embody_serial = EmbodySerial()
+send_helper = EmbodySendHelper(sender=embody_serial)
+print(f"Serial no: {send_helper.get_serial_no()}")
+embody_serial.shutdown()
 ```
 
 If you want to see more of what happens under the hood, activate debug logging:
@@ -55,8 +56,6 @@ import logging
 
 logging.basicConfig(level=logging.DEBUG)
 ```
-
-Please see the [Command-line Reference] for more details.
 
 ## Contributing
 

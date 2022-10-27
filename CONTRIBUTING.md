@@ -12,9 +12,8 @@ Here is a list of important resources for contributors:
 - [Code of Conduct]
 
 [mit license]: https://opensource.org/licenses/MIT
-[source code]: https://github.com/aidee-health/embody-serial-communicator
-[documentation]: https://embody-serial-communicator.readthedocs.io/
-[issue tracker]: https://github.com/aidee-health/embody-serial-communicator/issues
+[source code]: https://github.com/aidee-health/embody-serial
+[issue tracker]: https://github.com/aidee-health/embody-serial/issues
 
 ## How to report a bug
 
@@ -54,7 +53,7 @@ or the command-line interface:
 
 ```console
 $ poetry run python
-$ poetry run embody-serial-communicator
+$ poetry run embody-serial
 ```
 
 [poetry]: https://python-poetry.org/
@@ -118,7 +117,7 @@ This will allow a chance to talk it over with the owners and validate your appro
 - [Hypermodern Cookiecutter GitHub](https://github.com/cjolowicz/cookiecutter-hypermodern-python)
 - [Threading Howto](https://superfastpython.com/threading-in-python/)
 
-[pull request]: https://github.com/aidee-health/embody-serial-communicator/pulls
+[pull request]: https://github.com/aidee-health/embody-serial/pulls
 
 <!-- github-only -->
 

@@ -19,8 +19,7 @@ Changelog = "https://github.com/aidee-health/embody-serial/releases"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.10"
-click = ">=8.0.1"
-embody-protocol-codec = {git = "https://github.com/aidee-health/embody-protocol-codec.git", tag = "v1.0.3"}
+embody-protocol-codec = {git = "https://github.com/aidee-health/embody-protocol-codec.git", tag = "v1.0.4"}
 pyserial = "^3.5"
 
 [tool.poetry.dev-dependencies]
@@ -28,7 +27,7 @@ Pygments = ">=2.10.0"
 black = ">=21.10b0"
 coverage = {extras = ["toml"], version = ">=6.2"}
 darglint = ">=1.8.1"
-flake8 = ">=4.0.1,<5.0.0" # Espen: pre-commit run --all-files --hook-stage=manual --show-diff-on-failure fails with 5.0
+flake8 = ">=4.0.1,<5.0.0"
 flake8-bandit = ">=2.1.2"
 flake8-bugbear = ">=21.9.2"
 flake8-docstrings = ">=1.6.0"
@@ -39,7 +38,6 @@ mypy = ">=0.930"
 pep8-naming = ">=0.12.1"
 pre-commit = ">=2.16.0"
 pre-commit-hooks = ">=4.1.0"
-pytest = ">=6.2.5"
 pyupgrade = ">=2.29.1"
 safety = ">=1.10.3"
 sphinx = ">=4.3.2"
