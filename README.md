@@ -24,7 +24,7 @@
 
 ## Requirements
 
-- Python 3.9 or newer
+- Python 3.9
 - Access to private Aidee Health repositories on Github
 
 ## Installation
@@ -78,7 +78,7 @@ embody-serial --device COM3 --get-all
 ### Example 2 - Get serial no of device
 
 ```shell
-embody-serial --channel ble --device COM3 --get serialno
+embody-serial --device COM3 --get serialno
 ```
 
 ### Example 3 - List files over serial port
