@@ -1,5 +1,6 @@
 """Helpers for the embodyserial interface."""
 
+import threading
 from datetime import datetime
 from datetime import timezone
 from typing import Optional
@@ -9,14 +10,23 @@ from embodycodec import codec
 from embodycodec import types
 
 from .embodyserial import EmbodySender
+from .listeners import MessageListener
 
 
-class EmbodySendHelper:
+class EmbodySendHelper(MessageListener):
     """Facade to make send/receive more protocol agnostic with simple get/set methods."""
 
     def __init__(self, sender: EmbodySender, timeout: Optional[int] = 30) -> None:
         self.__sender = sender
         self.__send_timeout = timeout
+        self.__send_file_event = threading.Event()
+        self.__current_send_file: Optional[codec.Message] = None
+
+    def message_received(self, msg: codec.Message):
+        """Handle incoming messages from device."""
+        if isinstance(msg, codec.SendFile):
+            self.__current_send_file = msg
+            self.__send_file_event.set()
 
     def get_current_time(self) -> Optional[datetime]:
         response_attribute = self.__do_send_get_attribute_request(
@@ -112,16 +122,19 @@ class EmbodySendHelper:
             else False
         )
 
-    def get_file(self, file_name: str) -> bool:
+    def get_file(
+        self, file_name: str, wait_for_file_secs: Optional[int] = 300
+    ) -> Optional[codec.SendFile]:
         response = self.__sender.send(
             msg=codec.GetFile(file=types.File(file_name=file_name)),
             timeout=self.__send_timeout,
         )
         if not response or not isinstance(response, codec.GetFileResponse):
-            return False
-        # TODO (Espen - 2022-10-21): add listener and act on codec.SendFile message
-        # set path in init or in this method
-        return True
+            return None
+        if wait_for_file_secs:
+            if self.__send_file_event.wait(wait_for_file_secs):
+                return self.__current_send_file
+        return None
 
     def set_current_timestamp(self) -> bool:
         return self.set_timestamp(datetime.now(timezone.utc))

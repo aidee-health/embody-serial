@@ -81,6 +81,9 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         """Send a message. Wait for a response or timeout"""
         return self.__sender.send_message_and_wait_for_response(msg, timeout)
 
+    def add_message_listener(self, listener: MessageListener) -> None:
+        self.__reader.add_message_listener(listener)
+
     def shutdown(self) -> None:
         """Shutdown serial connection and all threads/executors."""
         with self.__shutdown_lock:

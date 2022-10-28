@@ -61,6 +61,11 @@ def main(args=None):
         )
     elif parsed_args.list_files:
         logging.info(f"Files: {send_helper.get_files()}")
+    elif parsed_args.get_file:
+        file_message = send_helper.get_file(parsed_args.get_file)
+        if file_message:
+            with open(file_message.file_name, "wb") as binary_file:
+                binary_file.write(file_message.payload)
 
 
 def __get_args(args):
@@ -101,6 +106,7 @@ def __get_parser():
     parser.add_argument(
         "--set-time", help="Set time (to now)", action="store_true", default=None
     )
+    parser.add_argument("--get-file", help="Get file with specified name", default=None)
     parser.add_argument(
         "--set-trace-level", help="Set trace level", type=int, default=None
     )
