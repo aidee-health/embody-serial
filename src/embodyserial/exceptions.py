@@ -1,0 +1,21 @@
+"""Specific exceptions for package."""
+from embodycodec import codec
+
+
+class NackError(Exception):
+    """Exception for nack messages."""
+
+    def __init__(self, nackmsg: codec.NackResponse) -> None:
+        """Override init."""
+        super.__init__()
+        self.nackmsg = nackmsg
+
+    def __str__(self):
+        """Override to string method."""
+        return f"Nack Response code {self.nackmsg.response_code} ({self.nackmsg.error_message()})"
+
+
+class MissingResponseError(Exception):
+    """Error when no response is received."""
+
+    ...
