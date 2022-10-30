@@ -102,6 +102,20 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         if not connected:
             self.shutdown()
 
+    def download_file(self, file_name: str) -> str:
+        pass
+        # TBD:
+        # if size is unknown, list all files to get files
+        #   Raise error if file does not exist
+        # if file size is 0, create an empty temp file and return
+        # stop reader since we're reading over uart directly?
+        # alternatively, look at a way to buffer large payloads generically
+        # send codec.GetFileUart().encode()
+        # same footer and header as usual
+        # read into filestream to avoid high mem usage
+        # verify crc, raise CrCError if not successful (cleanup file first)
+        # return path to temporary file
+
     @staticmethod
     def __find_serial_port() -> str:
         """Find first matching serial port name."""
@@ -257,7 +271,12 @@ class _ReaderThread(threading.Thread):
                 logging.debug(
                     f"RECEIVE: Received msg type: {msg_type}, length: {length}"
                 )
-                raw_message = raw_header + self.__serial.read(size=length - 3)
+                remaining_length = length - 3
+                raw_message = raw_header
+                while remaining_length > 0:
+                    len = min(remaining_length, 1024)
+                    raw_message += self.__serial.read(size=len)
+                    remaining_length -= len
                 logging.debug(f"RECEIVE: Received raw msg: {raw_message.hex()}")
             except serial.SerialException:
                 # probably some I/O problem such as disconnected USB serial adapters -> exit
