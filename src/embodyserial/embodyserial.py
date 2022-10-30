@@ -7,6 +7,7 @@ import concurrent.futures
 import logging
 import struct
 import threading
+import time
 from abc import ABC
 from abc import abstractmethod
 from concurrent.futures import ThreadPoolExecutor
@@ -277,7 +278,10 @@ class _ReaderThread(threading.Thread):
                     len = min(remaining_length, 1024)
                     raw_message += self.__serial.read(size=len)
                     remaining_length -= len
-                logging.debug(f"RECEIVE: Received raw msg: {raw_message.hex()}")
+                    time.sleep(0.001)
+                logging.debug(
+                    f"RECEIVE: Received raw msg: {raw_message.hex() if len(raw_message) <= 1024 else raw_message[0:1023].hex()}"
+                )
             except serial.SerialException:
                 # probably some I/O problem such as disconnected USB serial adapters -> exit
                 logging.info("Serial port is closed (SerialException)", exc_info=False)
