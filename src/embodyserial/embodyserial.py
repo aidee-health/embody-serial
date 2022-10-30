@@ -10,6 +10,7 @@ import threading
 from abc import ABC
 from abc import abstractmethod
 from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError
 from typing import Optional
 
 import serial
@@ -17,6 +18,7 @@ import serial.tools.list_ports
 from embodycodec import codec
 from serial.serialutil import SerialBase
 from serial.serialutil import SerialException
+from serial.tools import list_ports_common
 
 from .listeners import ConnectionListener
 from .listeners import MessageListener
@@ -109,14 +111,31 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         if len(all_available_ports) == 0:
             raise SerialException("No available serial ports")
         for port in all_available_ports:
-            for description in descriptions:
-                if description in port.description:
-                    return port.device
-            if not port.manufacturer:
-                continue
-            if any(manufacturer in port.manufacturer for manufacturer in manufacturers):
+            candidate: Optional[list_ports_common.ListPortInfo] = None
+            if any(description in port.description for description in descriptions):
+                candidate = port
+            elif port.manufacturer and any(
+                manufacturer in port.manufacturer for manufacturer in manufacturers
+            ):
+                candidate = port
+            if candidate and EmbodySerial.__port_is_alive(port):
                 return port.device
         raise SerialException("No matching serial ports found")
+
+    @staticmethod
+    def __port_is_alive(port: SerialBase) -> bool:
+        """Check if port has an active embody device."""
+        logging.info(f"Checking candidate port: {port}")
+        try:
+            ser = serial.Serial(port=port.device, baudrate=115200, timeout=3)
+            ser.write(codec.Heartbeat().encode())
+            expected_response = codec.HeartbeatResponse().encode()
+            response = ser.read(len(expected_response))
+            ser.close()
+            return response == expected_response
+        except Exception as e:
+            logging.info(f"Exception raised for port check: {e}")
+            return False
 
 
 class _MessageSender(ResponseMessageListener):

@@ -91,7 +91,8 @@ class EmbodySendHelper(MessageListener):
         )
         return response_attribute.formatted_value() if response_attribute else None
 
-    def get_files(self) -> list[str]:
+    def get_files(self) -> list[tuple[str, int]]:
+        """Get a list of tuples with file name and file size."""
         response = self.__sender.send(
             msg=codec.ListFiles(), timeout=self.__send_timeout
         )
@@ -101,12 +102,12 @@ class EmbodySendHelper(MessageListener):
             raise NackError(response)
         assert isinstance(response, codec.ListFilesResponse)
 
-        files: list[str] = list()
+        files: list[tuple(str, int)] = list()
         if len(response.files) == 0:
             return files
         else:
             for file in response.files:
-                files.append(str(file.file_name))
+                files.append((str(file.file_name), file.file_size))
             return files
 
     def delete_file(self, file_name: str) -> bool:
@@ -126,13 +127,10 @@ class EmbodySendHelper(MessageListener):
     ) -> Optional[codec.SendFile]:
         response = self.__sender.send(
             msg=codec.GetFile(file=types.File(file_name=file_name)),
-            timeout=self.__send_timeout,
+            timeout=5,
         )
-        if not response:
-            raise MissingResponseError
-        if isinstance(response, codec.NackResponse):
+        if response and isinstance(response, codec.NackResponse):
             raise NackError(response)
-        assert isinstance(response, codec.GetFileResponse)
         if wait_for_file_secs:
             if self.__send_file_event.wait(wait_for_file_secs):
                 return self.__current_send_file

@@ -44,28 +44,29 @@ def main(args=None):
     send_helper = EmbodySendHelper(sender=embody_serial)
 
     if parsed_args.get:
-        logging.info(
-            f"{parsed_args.get}: {getattr(send_helper, get_attributes_dict.get(parsed_args.get))()}"
-        )
+        print(f"{getattr(send_helper, get_attributes_dict.get(parsed_args.get))()}")
     elif parsed_args.get_all:
         for attrib in get_attributes_dict.keys():
-            logging.info(
+            print(
                 f"{attrib}: {getattr(send_helper, get_attributes_dict.get(attrib))()}"
             )
     elif parsed_args.set_time:
-        logging.info(f"Set current time: {send_helper.set_current_timestamp()}")
-        logging.info(f"New current time is: {send_helper.get_current_time()}")
+        print(f"Set current time: {send_helper.set_current_timestamp()}")
+        print(f"New current time is: {send_helper.get_current_time()}")
     elif parsed_args.set_trace_level:
-        logging.info(
+        print(
             f"Trace level set: {send_helper.set_trace_level(parsed_args.set_trace_level)}"
         )
     elif parsed_args.list_files:
-        logging.info(f"Files: {send_helper.get_files()}")
+        for name, size in send_helper.get_files():
+            print(f"{name} ({round(size/1024,2)}KB)")
     elif parsed_args.get_file:
-        file_message = send_helper.get_file(parsed_args.get_file)
-        if file_message:
-            with open(file_message.file_name, "wb") as binary_file:
-                binary_file.write(file_message.payload)
+        pass  # TBD
+        # file_message = send_helper.get_file(parsed_args.get_file)
+        # if file_message:
+        #    with open(file_message.file_name, "wb") as binary_file:
+        #        binary_file.write(file_message.payload)
+        #        print(f"{file_message.file_name}")
 
 
 def __get_args(args):
