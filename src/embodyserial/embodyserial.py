@@ -263,25 +263,11 @@ class _ReaderThread(threading.Thread):
             self.__serial.timeout = 300
         while self.alive and self.__serial.is_open:
             try:
-                raw_header = self.__serial.read(3)
-                logging.debug(f"RECEIVE: Received header {raw_header.hex()}")
-                (
-                    msg_type,
-                    length,
-                ) = struct.unpack(">BH", raw_header)
-                logging.debug(
-                    f"RECEIVE: Received msg type: {msg_type}, length: {length}"
-                )
-                remaining_length = length - 3
-                raw_message = raw_header
-                while remaining_length > 0:
-                    len = min(remaining_length, 1024)
-                    raw_message += self.__serial.read(size=len)
-                    remaining_length -= len
-                    time.sleep(0.001)
-                logging.debug(
-                    f"RECEIVE: Received raw msg: {raw_message.hex() if len(raw_message) <= 1024 else raw_message[0:1023].hex()}"
-                )
+                raw_message = self.__read_protocol_message()
+                if logging.DEBUG >= logging.root.level:
+                    logging.debug(
+                        f"RECEIVE: Received raw msg: {raw_message.hex() if len(raw_message) <= 1024 else raw_message[0:1023].hex()}"
+                    )
             except serial.SerialException:
                 # probably some I/O problem such as disconnected USB serial adapters -> exit
                 logging.info("Serial port is closed (SerialException)", exc_info=False)
@@ -305,6 +291,24 @@ class _ReaderThread(threading.Thread):
                         continue
         self.alive = False
         self.__notify_connection_listeners(connected=False)
+
+    def __read_protocol_message(self) -> bytes:
+        """Read next message from input."""
+        raw_header = self.__serial.read(3)
+        logging.debug(f"RECEIVE: Received header {raw_header.hex()}")
+        (
+            msg_type,
+            length,
+        ) = struct.unpack(">BH", raw_header)
+        logging.debug(f"RECEIVE: Received msg type: {msg_type}, length: {length}")
+        remaining_length = length - 3
+        raw_message = raw_header
+        while remaining_length > 0:
+            len = min(remaining_length, 1024)
+            raw_message += self.__serial.read(size=len)
+            remaining_length -= len
+            time.sleep(0.001)
+        return raw_message
 
     def __handle_incoming_message(self, msg: codec.Message) -> None:
         if msg.msg_type < 0x80:
@@ -354,6 +358,9 @@ class _ReaderThread(threading.Thread):
     def add_response_message_listener(self, listener: ResponseMessageListener) -> None:
         self.__response_message_listeners.append(listener)
 
+    def add_connection_listener(self, listener: ConnectionListener) -> None:
+        self.__connection_listeners.append(listener)
+
     def __notify_connection_listeners(self, connected: bool) -> None:
         if len(self.__connection_listeners) == 0:
             return
@@ -370,9 +377,6 @@ class _ReaderThread(threading.Thread):
             logging.warning(
                 f"Error notifying connection listener: {str(e)}", exc_info=True
             )
-
-    def add_connection_listener(self, listener: ConnectionListener) -> None:
-        self.__connection_listeners.append(listener)
 
 
 if __name__ == "__main__":

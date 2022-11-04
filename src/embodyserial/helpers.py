@@ -122,11 +122,9 @@ class EmbodySendHelper(MessageListener):
 
         return True
 
-    def get_file(
-        self, file_name: str, wait_for_file_secs: Optional[int] = 300
-    ) -> Optional[codec.SendFile]:
+    def get_file(self, file_name: str, wait_for_file_secs: Optional[int] = 300) -> str:
         response = self.__sender.send(
-            msg=codec.GetFile(file=types.File(file_name=file_name)),
+            msg=codec.GetFileUart(file=types.File(file_name=file_name)),
             timeout=5,
         )
         if response and isinstance(response, codec.NackResponse):
