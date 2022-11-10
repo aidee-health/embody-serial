@@ -109,52 +109,16 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         if not connected:
             self.shutdown()
 
-    def download_file(self, file_name: str, size: int) -> str:
+    def download_file(self, file_name: str, size: int, timeout: int = 300) -> str:
         """Download file from device and write to temporary file.
 
         Raises MissingResponseError if no response.
         Raises CrcError if invalid crc.
         """
-        buffer_size = 1024
-        remaining_size = size
-        calculated_crc: Optional[int] = None
-        tmp = tempfile.NamedTemporaryFile(delete=False)
         if size == 0:
-            return tmp.name
-        self.__reader.pause()
+            return tempfile.NamedTemporaryFile(delete=False).name
         self.send_async(codec.GetFileUart(types.File(file_name)))
-        try:
-            while remaining_size > 0 and self.__serial.is_open:
-                chunk = self.__serial.read(min(buffer_size, remaining_size))
-                if not chunk:
-                    chunk = self.__serial.read(min(buffer_size, remaining_size))
-                if not chunk:
-                    raise MissingResponseError("File download failed")
-                calculated_crc = crc.crc16(data=chunk, existing_crc=calculated_crc)
-                tmp.write(chunk)
-                remaining_size -= buffer_size
-                time.sleep(0.001)
-            crc_received = self.__serial.read(2)
-            if not crc_received == calculated_crc:
-                raise CrcError(
-                    f"Invalid crc - expected {hex(crc_received)}, received {calculated_crc}"
-                )
-        finally:
-            tmp.close()
-            os.unlink(tmp.name)
-            self.__reader.resume()
-        return tmp.name
-        # TBD:
-        # if size is unknown, list all files to get files
-        #   Raise error if file does not exist
-        # if file size is 0, create an empty temp file and return
-        # stop reader since we're reading over uart directly?
-        # alternatively, look at a way to buffer large payloads generically
-        # send codec.GetFileUart().encode()
-        # same footer and header as usual
-        # read into filestream to avoid high mem usage
-        # verify crc, raise CrCError if not successful (cleanup file first)
-        # return path to temporary file
+        return self.__reader.download_file(size, timeout)
 
     @staticmethod
     def __find_serial_port() -> str:
@@ -281,19 +245,33 @@ class _ReaderThread(threading.Thread):
         self.__message_listeners: list[MessageListener] = []
         self.__response_message_listeners: list[ResponseMessageListener] = []
         self.__connection_listeners: list[ConnectionListener] = []
-        self.__pause = False
-        self.__resume_event = threading.Event()
+        self.__file_mode = False
+        self.__file_size = -1
+        self.__file_name: Optional[str] = None
+        self.__file_error: Optional[Exception] = None
+        self.__file_event = threading.Event()
         self.alive = True
 
-    def pause(self) -> None:
-        self.__resume_event.clear()
-        self.__pause = True
-        if hasattr(self.__serial, "cancel_read"):
-            self.__serial.cancel_read()
+    def download_file(self, size: int, timeout: int = 300) -> str:
+        self.__file_event.clear()
+        self.__file_size = size
+        self.__file_name = None
+        self.__file_error = None
+        self.__file_mode = True
+        try:
+            if not self.__file_event.wait(timeout):
+                raise MissingResponseError("No file received within timeout")
+            if self.__file_error:
+                raise self.__file_error
+            return self.__file_name
+        finally:
+            self.__reset_file_mode()
 
-    def resume(self) -> None:
-        self.__pause = False
-        self.__resume_event.set()
+    def __reset_file_mode(self) -> None:
+        self.__file_event.clear()
+        self.__file_size = -1
+        self.__file_name = None
+        self.__file_error = None
 
     def stop(self) -> None:
         """Stop the reader thread"""
@@ -315,7 +293,15 @@ class _ReaderThread(threading.Thread):
             self.__serial.timeout = 300
         while self.alive and self.__serial.is_open:
             try:
-                self.__read_protocol_message()
+                raw_header = self.__serial.read(3)
+                if not raw_header or len(raw_header) < 3:
+                    logging.info("Interrupted. Exiting reader thread.")
+                    break
+                if self.__file_mode:
+                    self.__read_file(raw_header)
+                    self.__reset_file_mode()
+                else:
+                    self.__read_protocol_message(raw_header)
             except serial.SerialException:
                 # probably some I/O problem such as disconnected USB serial adapters -> exit
                 logging.info("Serial port is closed (SerialException)")
@@ -326,16 +312,43 @@ class _ReaderThread(threading.Thread):
         self.alive = False
         self.__notify_connection_listeners(connected=False)
 
-    def __read_protocol_message(self) -> None:
+    def __read_file(self, first_bytes: bytes) -> None:
+        buffer_size = 1024
+        remaining_size = self.__file_size - len(first_bytes)
+        calculated_crc = crc.crc16(data=first_bytes)
+        tmp = tempfile.NamedTemporaryFile(delete=False)
+        tmp.write(first_bytes)
+        try:
+            while remaining_size > 0 and self.__serial.is_open:
+                chunk = self.__serial.read(min(buffer_size, remaining_size))
+                if not chunk:
+                    chunk = self.__serial.read(min(buffer_size, remaining_size))
+                if not chunk:
+                    raise MissingResponseError("File download failed")
+                calculated_crc = crc.crc16(data=chunk, existing_crc=calculated_crc)
+                logging.info(
+                    f"Read file: {self.__file_size - remaining_size} of {self.__file_size} bytes"
+                )
+                tmp.write(chunk)
+                remaining_size -= len(chunk)
+                time.sleep(0.001)
+            raw_crc_received = self.__serial.read(2)
+            (crc_received,) = struct.unpack(">H", raw_crc_received)
+            if not crc_received == calculated_crc:
+                self.__file_error = CrcError(
+                    f"Invalid crc - expected {hex(crc_received)}, received {hex(calculated_crc)}"
+                )
+            else:
+                self.__file_name = tmp.name
+            self.__file_event.set()
+        finally:
+            tmp.close()
+            os.unlink(tmp.name)
+
+    def __read_protocol_message(self, raw_header: bytes) -> None:
         """Read next message from input."""
-        raw_header = self.__serial.read(3)
-        if not raw_header or len(raw_header) < 3:
-            raise MissingResponseError("No header received")
         logging.debug(f"RECEIVE: Received header {raw_header.hex()}")
-        (
-            msg_type,
-            length,
-        ) = struct.unpack(">BH", raw_header)
+        msg_type, length = struct.unpack(">BH", raw_header)
         logging.debug(f"RECEIVE: Received msg type: {msg_type}, length: {length}")
         remaining_length = length - 3
         raw_message = raw_header
@@ -344,10 +357,9 @@ class _ReaderThread(threading.Thread):
             remaining_length -= 1024
             time.sleep(0.001)
         if raw_message:
-            if logging.DEBUG >= logging.root.level:
-                logging.debug(
-                    f"RECEIVE: Received raw msg: {raw_message.hex() if len(raw_message) <= 1024 else raw_message[0:1023].hex()}"
-                )
+            logging.debug(
+                f"RECEIVE: Received raw msg: {raw_message.hex() if len(raw_message) <= 1024 else raw_message[0:1023].hex()}"
+            )
             try:
                 msg = codec.decode(raw_message)
                 if msg:

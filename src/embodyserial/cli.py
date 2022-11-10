@@ -73,7 +73,7 @@ def main(args=None):
         downloaded_file = embody_serial.download_file(
             file_name=filtered_file[0], size=filtered_file[1]
         )
-        print(f"Downloaded file {downloaded_file} (size {filtered_file[1]}")
+        print(f"Downloaded file {downloaded_file} (size {filtered_file[1]})")
         return
 
 
