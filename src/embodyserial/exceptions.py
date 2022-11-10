@@ -19,3 +19,9 @@ class MissingResponseError(Exception):
     """Error when no response is received."""
 
     ...
+
+
+class CrcError(Exception):
+    """Error when invalid crc is received for message from device."""
+
+    ...

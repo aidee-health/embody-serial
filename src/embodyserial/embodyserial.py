@@ -5,7 +5,9 @@ and subscribing for incoming messages from the device.
 """
 import concurrent.futures
 import logging
+import os
 import struct
+import tempfile
 import threading
 import time
 from abc import ABC
@@ -17,10 +19,14 @@ from typing import Optional
 import serial
 import serial.tools.list_ports
 from embodycodec import codec
+from embodycodec import crc
+from embodycodec import types
 from serial.serialutil import SerialBase
 from serial.serialutil import SerialException
 from serial.tools import list_ports_common
 
+from .exceptions import CrcError
+from .exceptions import MissingResponseError
 from .listeners import ConnectionListener
 from .listeners import MessageListener
 from .listeners import ResponseMessageListener
@@ -103,8 +109,38 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         if not connected:
             self.shutdown()
 
-    def download_file(self, file_name: str) -> str:
-        pass
+    def download_file(self, file_name: str, size: int) -> str:
+        """Download file from device and write to temporary file.
+
+        Raises MissingResponseError if no response.
+        Raises CrcError if invalid crc.
+        """
+        buffer_size = 1024
+        remaining_size = size
+        calculated_crc: Optional[int] = None
+        tmp = tempfile.NamedTemporaryFile(delete=False)
+        if size == 0:
+            return tmp.name
+        self.__reader.pause()
+        self.send_async(codec.GetFileUart(types.File(file_name)))
+        try:
+            while remaining_size > 0 and self.__serial.is_open:
+                chunk = self.__serial.read(min(buffer_size, remaining_size))
+                if not chunk:
+                    raise MissingResponseError("File download failed")
+                calculated_crc = crc.crc16(data=chunk, existing_crc=calculated_crc)
+                tmp.write(chunk)
+                remaining_size -= buffer_size
+            crc_received = self.__serial.read(2)
+            if not crc_received == calculated_crc:
+                raise CrcError(
+                    f"Invalid crc - expected {hex(crc_received)}, received {calculated_crc}"
+                )
+        finally:
+            tmp.close()
+            os.unlink(tmp.name)
+            self.__reader.resume()
+        return tmp.name
         # TBD:
         # if size is unknown, list all files to get files
         #   Raise error if file does not exist
@@ -121,7 +157,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
     def __find_serial_port() -> str:
         """Find first matching serial port name."""
         manufacturers = ["Datek", "Aidee"]
-        descriptions = ["IsenseU", "G3"]
+        descriptions = ["IsenseU", "G3", "EmBody"]
         all_available_ports = serial.tools.list_ports.comports()
         if len(all_available_ports) == 0:
             raise SerialException("No available serial ports")
