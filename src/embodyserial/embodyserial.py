@@ -242,12 +242,26 @@ class _ReaderThread(threading.Thread):
         self.__message_listeners: list[MessageListener] = []
         self.__response_message_listeners: list[ResponseMessageListener] = []
         self.__connection_listeners: list[ConnectionListener] = []
+        self.__pause = False
+        self.__resume_event = threading.Event()
         self.alive = True
+
+    def pause(self) -> None:
+        self.__resume_event.clear()
+        self.__pause = True
+        if hasattr(self.__serial, "cancel_read"):
+            self.__serial.cancel_read()
+
+    def resume(self) -> None:
+        self.__pause = False
+        self.__resume_event.set()
 
     def stop(self) -> None:
         """Stop the reader thread"""
         if not self.alive:
             return
+        self.__pause = False
+        self.__resume_event.set()
         self.alive = False
         if hasattr(self.__serial, "cancel_read"):
             self.__serial.cancel_read()
@@ -262,6 +276,9 @@ class _ReaderThread(threading.Thread):
         if not hasattr(self.__serial, "cancel_read"):
             self.__serial.timeout = 300
         while self.alive and self.__serial.is_open:
+            if self.__pause:
+                self.__resume_event.wait()
+                continue
             try:
                 raw_message = self.__read_protocol_message()
                 if logging.DEBUG >= logging.root.level:
