@@ -127,10 +127,13 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             while remaining_size > 0 and self.__serial.is_open:
                 chunk = self.__serial.read(min(buffer_size, remaining_size))
                 if not chunk:
+                    chunk = self.__serial.read(min(buffer_size, remaining_size))
+                if not chunk:
                     raise MissingResponseError("File download failed")
                 calculated_crc = crc.crc16(data=chunk, existing_crc=calculated_crc)
                 tmp.write(chunk)
                 remaining_size -= buffer_size
+                time.sleep(0.001)
             crc_received = self.__serial.read(2)
             if not crc_received == calculated_crc:
                 raise CrcError(
@@ -311,42 +314,23 @@ class _ReaderThread(threading.Thread):
         if not hasattr(self.__serial, "cancel_read"):
             self.__serial.timeout = 300
         while self.alive and self.__serial.is_open:
-            if self.__pause:
-                self.__resume_event.wait()
-                continue
             try:
-                raw_message = self.__read_protocol_message()
-                if logging.DEBUG >= logging.root.level:
-                    logging.debug(
-                        f"RECEIVE: Received raw msg: {raw_message.hex() if len(raw_message) <= 1024 else raw_message[0:1023].hex()}"
-                    )
+                self.__read_protocol_message()
             except serial.SerialException:
                 # probably some I/O problem such as disconnected USB serial adapters -> exit
-                logging.info("Serial port is closed (SerialException)", exc_info=False)
+                logging.info("Serial port is closed (SerialException)")
                 break
             except OSError:
-                logging.warning(
-                    "OS Error reading from socket (OSError)", exc_info=False
-                )
+                logging.info("OS Error reading from socket (OSError)")
                 break
-            else:
-                if raw_message:
-                    try:
-                        msg = codec.decode(raw_message)
-                        if msg:
-                            self.__handle_incoming_message(msg)
-                    except Exception as e:
-                        logging.warning(
-                            f"Error processing raw message {raw_message}, error: {str(e)}",
-                            exc_info=True,
-                        )
-                        continue
         self.alive = False
         self.__notify_connection_listeners(connected=False)
 
-    def __read_protocol_message(self) -> bytes:
+    def __read_protocol_message(self) -> None:
         """Read next message from input."""
         raw_header = self.__serial.read(3)
+        if not raw_header or len(raw_header) < 3:
+            raise MissingResponseError("No header received")
         logging.debug(f"RECEIVE: Received header {raw_header.hex()}")
         (
             msg_type,
@@ -356,11 +340,23 @@ class _ReaderThread(threading.Thread):
         remaining_length = length - 3
         raw_message = raw_header
         while remaining_length > 0:
-            len = min(remaining_length, 1024)
-            raw_message += self.__serial.read(size=len)
-            remaining_length -= len
+            raw_message += self.__serial.read(size=min(remaining_length, 1024))
+            remaining_length -= 1024
             time.sleep(0.001)
-        return raw_message
+        if raw_message:
+            if logging.DEBUG >= logging.root.level:
+                logging.debug(
+                    f"RECEIVE: Received raw msg: {raw_message.hex() if len(raw_message) <= 1024 else raw_message[0:1023].hex()}"
+                )
+            try:
+                msg = codec.decode(raw_message)
+                if msg:
+                    self.__handle_incoming_message(msg)
+            except Exception as e:
+                logging.warning(
+                    f"Error processing raw message {raw_message}, error: {str(e)}",
+                    exc_info=True,
+                )
 
     def __handle_incoming_message(self, msg: codec.Message) -> None:
         if msg.msg_type < 0x80:

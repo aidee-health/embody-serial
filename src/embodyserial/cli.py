@@ -59,14 +59,22 @@ def main(args=None):
         )
     elif parsed_args.list_files:
         for name, size in send_helper.get_files():
-            print(f"{name} ({round(size/1024,2)}KB)")
-    elif parsed_args.get_file:
-        pass  # TBD
-        # file_message = send_helper.get_file(parsed_args.get_file)
-        # if file_message:
-        #    with open(file_message.file_name, "wb") as binary_file:
-        #        binary_file.write(file_message.payload)
-        #        print(f"{file_message.file_name}")
+            print(f"{name} ({round(size/1024)}KB)")
+    elif parsed_args.download_file:
+        filtered_files: list[tuple[str, int]] = [
+            tup
+            for tup in send_helper.get_files()
+            if tup[0] == parsed_args.download_file
+        ]
+        if not filtered_files or len(filtered_files) == 0:
+            print(f"Unknown file name {parsed_args.download_file}")
+            return
+        filtered_file = filtered_files[0]
+        downloaded_file = embody_serial.download_file(
+            file_name=filtered_file[0], size=filtered_file[1]
+        )
+        print(f"Downloaded file {downloaded_file} (size {filtered_file[1]}")
+        return
 
 
 def __get_args(args):
@@ -107,7 +115,9 @@ def __get_parser():
     parser.add_argument(
         "--set-time", help="Set time (to now)", action="store_true", default=None
     )
-    parser.add_argument("--get-file", help="Get file with specified name", default=None)
+    parser.add_argument(
+        "--download-file", help="Download specified file", type=str, default=None
+    )
     parser.add_argument(
         "--set-trace-level", help="Set trace level", type=int, default=None
     )

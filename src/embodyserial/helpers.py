@@ -1,6 +1,5 @@
 """Helpers for the embodyserial interface."""
 
-import threading
 from datetime import datetime
 from datetime import timezone
 from typing import Optional
@@ -21,8 +20,6 @@ class EmbodySendHelper(MessageListener):
     def __init__(self, sender: EmbodySender, timeout: Optional[int] = 30) -> None:
         self.__sender = sender
         self.__send_timeout = timeout
-        self.__send_file_event = threading.Event()
-        self.__current_send_file: Optional[codec.Message] = None
 
     def message_received(self, msg: codec.Message):
         """Handle incoming messages from device."""
@@ -121,18 +118,6 @@ class EmbodySendHelper(MessageListener):
         assert isinstance(response, codec.DeleteFileResponse)
 
         return True
-
-    def get_file(self, file_name: str, wait_for_file_secs: Optional[int] = 300) -> str:
-        response = self.__sender.send(
-            msg=codec.GetFileUart(file=types.File(file_name=file_name)),
-            timeout=5,
-        )
-        if response and isinstance(response, codec.NackResponse):
-            raise NackError(response)
-        if wait_for_file_secs:
-            if self.__send_file_event.wait(wait_for_file_secs):
-                return self.__current_send_file
-        return None
 
     def set_current_timestamp(self) -> bool:
         return self.set_timestamp(datetime.now(timezone.utc))
