@@ -10,6 +10,7 @@ from embodycodec import types
 from serial.serialutil import SerialException
 
 from embodyserial import helpers
+from embodyserial.exceptions import MissingResponseError
 
 
 def test_get_current_time_success() -> None:
@@ -23,8 +24,8 @@ def test_get_current_time_no_response() -> None:
     sender: helpers.EmbodySender = Mock()
     sender.send = Mock(return_value=None)  # type: ignore
     send_helper = helpers.EmbodySendHelper(sender=sender)
-    current_time = send_helper.get_current_time()
-    assert current_time is None
+    with pytest.raises(MissingResponseError):
+        send_helper.get_current_time()
 
 
 def test_get_current_time_with_exception() -> None:

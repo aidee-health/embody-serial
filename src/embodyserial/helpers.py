@@ -11,21 +11,14 @@ from embodycodec import types
 from .embodyserial import EmbodySender
 from .exceptions import MissingResponseError
 from .exceptions import NackError
-from .listeners import MessageListener
 
 
-class EmbodySendHelper(MessageListener):
+class EmbodySendHelper:
     """Facade to make send/receive more protocol agnostic with simple get/set methods."""
 
     def __init__(self, sender: EmbodySender, timeout: Optional[int] = 30) -> None:
         self.__sender = sender
         self.__send_timeout = timeout
-
-    def message_received(self, msg: codec.Message):
-        """Handle incoming messages from device."""
-        if isinstance(msg, codec.SendFile):
-            self.__current_send_file = msg
-            self.__send_file_event.set()
 
     def get_current_time(self) -> datetime:
         response_attribute = self.__do_send_get_attribute_request(
@@ -37,25 +30,33 @@ class EmbodySendHelper(MessageListener):
         response_attribute = self.__do_send_get_attribute_request(
             attributes.SerialNoAttribute.attribute_id
         )
-        return response_attribute.formatted_value()
+        response = response_attribute.formatted_value()
+        assert response
+        return response
 
     def get_vendor(self) -> str:
         response_attribute = self.__do_send_get_attribute_request(
             attributes.VendorAttribute.attribute_id
         )
-        return response_attribute.formatted_value()
+        response = response_attribute.formatted_value()
+        assert response
+        return response
 
     def get_model(self) -> str:
         response_attribute = self.__do_send_get_attribute_request(
             attributes.ModelAttribute.attribute_id
         )
-        return response_attribute.formatted_value()
+        response = response_attribute.formatted_value()
+        assert response
+        return response
 
     def get_bluetooth_mac(self) -> str:
         response_attribute = self.__do_send_get_attribute_request(
             attributes.BluetoothMacAttribute.attribute_id
         )
-        return response_attribute.formatted_value()
+        response = response_attribute.formatted_value()
+        assert response
+        return response
 
     def get_battery_level(self) -> int:
         response_attribute = self.__do_send_get_attribute_request(
@@ -86,7 +87,9 @@ class EmbodySendHelper(MessageListener):
         response_attribute = self.__do_send_get_attribute_request(
             attributes.FirmwareVersionAttribute.attribute_id
         )
-        return response_attribute.formatted_value() if response_attribute else None
+        response = response_attribute.formatted_value()
+        assert response
+        return response
 
     def get_files(self) -> list[tuple[str, int]]:
         """Get a list of tuples with file name and file size."""
@@ -99,7 +102,7 @@ class EmbodySendHelper(MessageListener):
             raise NackError(response)
         assert isinstance(response, codec.ListFilesResponse)
 
-        files: list[tuple(str, int)] = list()
+        files: list[tuple[str, int]] = list()
         if len(response.files) == 0:
             return files
         else:
@@ -112,11 +115,10 @@ class EmbodySendHelper(MessageListener):
             msg=codec.DeleteFile(types.File(file_name)), timeout=self.__send_timeout
         )
         if not response:
-            raise MissingResponseError
+            raise MissingResponseError()
         if isinstance(response, codec.NackResponse):
             raise NackError(response)
         assert isinstance(response, codec.DeleteFileResponse)
-
         return True
 
     def set_current_timestamp(self) -> bool:
@@ -135,7 +137,7 @@ class EmbodySendHelper(MessageListener):
             msg=codec.ReformatDisk(), timeout=self.__send_timeout
         )
         if not response:
-            raise MissingResponseError
+            raise MissingResponseError()
         if isinstance(response, codec.NackResponse):
             raise NackError(response)
         assert isinstance(response, codec.ReformatDiskResponse)
@@ -146,7 +148,7 @@ class EmbodySendHelper(MessageListener):
             msg=codec.DeleteAllFiles(), timeout=self.__send_timeout
         )
         if not response:
-            raise MissingResponseError
+            raise MissingResponseError()
         if isinstance(response, codec.NackResponse):
             raise NackError(response)
         assert isinstance(response, codec.DeleteAllFilesResponse)
@@ -159,7 +161,7 @@ class EmbodySendHelper(MessageListener):
             msg=codec.GetAttribute(attribute_id), timeout=self.__send_timeout
         )
         if not response:
-            raise MissingResponseError
+            raise MissingResponseError()
         if isinstance(response, codec.NackResponse):
             raise NackError(response)
         assert isinstance(response, codec.GetAttributeResponse)
@@ -171,8 +173,7 @@ class EmbodySendHelper(MessageListener):
             timeout=self.__send_timeout,
         )
         if not response:
-            raise MissingResponseError
+            raise MissingResponseError()
         if isinstance(response, codec.NackResponse):
             raise NackError(response)
-        if isinstance(response, codec.SetAttributeResponse):
-            return True
+        return isinstance(response, codec.SetAttributeResponse)

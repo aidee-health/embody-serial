@@ -7,7 +7,6 @@ class NackError(Exception):
 
     def __init__(self, nackmsg: codec.NackResponse) -> None:
         """Override init."""
-        super.__init__()
         self.nackmsg = nackmsg
 
     def __str__(self):

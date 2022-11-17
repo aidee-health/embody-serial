@@ -260,7 +260,7 @@ class _ReaderThread(threading.Thread):
         self.__file_size = size
         self.__file_mode = True
         try:
-            if not self.__file_event.wait(timeout):
+            if not self.__file_event.wait(timeout) or not self.__file_name:
                 raise MissingResponseError("No file received within timeout")
             if self.__file_error:
                 raise self.__file_error
@@ -371,7 +371,7 @@ class _ReaderThread(threading.Thread):
                     self.__handle_incoming_message(msg)
             except Exception as e:
                 logging.warning(
-                    f"Error processing raw message {raw_message}, error: {str(e)}",
+                    f"Error processing protocol message, error: {str(e)}",
                     exc_info=True,
                 )
 
