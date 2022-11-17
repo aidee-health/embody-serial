@@ -175,4 +175,4 @@ class EmbodySendHelper(MessageListener):
         if isinstance(response, codec.NackResponse):
             raise NackError(response)
         if isinstance(response, codec.SetAttributeResponse):
-            return response.value
+            return True

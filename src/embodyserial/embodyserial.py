@@ -91,6 +91,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         return self.__sender.send_message_and_wait_for_response(msg, timeout)
 
     def add_message_listener(self, listener: MessageListener) -> None:
+        """Register message listener."""
         self.__reader.add_message_listener(listener)
 
     def shutdown(self) -> None:
@@ -112,8 +113,9 @@ class EmbodySerial(ConnectionListener, EmbodySender):
     def download_file(self, file_name: str, size: int, timeout: int = 300) -> str:
         """Download file from device and write to temporary file.
 
-        Raises MissingResponseError if no response.
-        Raises CrcError if invalid crc.
+        Raises:
+          MissingResponseError if no response.
+          CrcError if invalid crc.
         """
         if size == 0:
             return tempfile.NamedTemporaryFile(delete=False).name
@@ -253,10 +255,9 @@ class _ReaderThread(threading.Thread):
         self.alive = True
 
     def download_file(self, size: int, timeout: int = 300) -> str:
-        self.__file_event.clear()
+        """Set reader in file mode and read file."""
+        self.__reset_file_mode()
         self.__file_size = size
-        self.__file_name = None
-        self.__file_error = None
         self.__file_mode = True
         try:
             if not self.__file_event.wait(timeout):
@@ -317,6 +318,7 @@ class _ReaderThread(threading.Thread):
         remaining_size = self.__file_size - len(first_bytes)
         calculated_crc = crc.crc16(data=first_bytes)
         tmp = tempfile.NamedTemporaryFile(delete=False)
+        start = time.time()
         tmp.write(first_bytes)
         try:
             while remaining_size > 0 and self.__serial.is_open:
@@ -326,13 +328,17 @@ class _ReaderThread(threading.Thread):
                 if not chunk:
                     raise MissingResponseError("File download failed")
                 calculated_crc = crc.crc16(data=chunk, existing_crc=calculated_crc)
-                logging.info(
+                logging.debug(
                     f"Read file: {self.__file_size - remaining_size} of {self.__file_size} bytes"
                 )
                 tmp.write(chunk)
                 remaining_size -= len(chunk)
                 time.sleep(0.001)
             raw_crc_received = self.__serial.read(2)
+            end = time.time()
+            logging.info(
+                f"Read {round(self.__file_size/1024,2)}KB in {end-start} secs - {round((self.__file_size/1024)/(end-start),2)}KB/s"
+            )
             (crc_received,) = struct.unpack(">H", raw_crc_received)
             if not crc_received == calculated_crc:
                 self.__file_error = CrcError(

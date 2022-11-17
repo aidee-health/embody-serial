@@ -5,6 +5,7 @@ Parse command line arguments, invoke embody device.
 import argparse
 import logging
 import sys
+import time
 
 from . import __version__
 from .embodyserial import EmbodySerial
@@ -42,39 +43,61 @@ def main(args=None):
     )
     embody_serial = EmbodySerial(serial_port=parsed_args.device)
     send_helper = EmbodySendHelper(sender=embody_serial)
-
-    if parsed_args.get:
-        print(f"{getattr(send_helper, get_attributes_dict.get(parsed_args.get))()}")
-    elif parsed_args.get_all:
-        for attrib in get_attributes_dict.keys():
+    try:
+        if parsed_args.get:
+            print(f"{getattr(send_helper, get_attributes_dict.get(parsed_args.get))()}")
+            exit(0)
+        elif parsed_args.get_all:
+            for attrib in get_attributes_dict.keys():
+                print(
+                    f"{attrib}: {getattr(send_helper, get_attributes_dict.get(attrib))()}"
+                )
+            exit(0)
+        elif parsed_args.set_time:
+            print(f"Set current time: {send_helper.set_current_timestamp()}")
+            print(f"New current time is: {send_helper.get_current_time()}")
+            exit(0)
+        elif parsed_args.set_trace_level:
             print(
-                f"{attrib}: {getattr(send_helper, get_attributes_dict.get(attrib))()}"
+                f"Trace level set: {send_helper.set_trace_level(parsed_args.set_trace_level)}"
             )
-    elif parsed_args.set_time:
-        print(f"Set current time: {send_helper.set_current_timestamp()}")
-        print(f"New current time is: {send_helper.get_current_time()}")
-    elif parsed_args.set_trace_level:
-        print(
-            f"Trace level set: {send_helper.set_trace_level(parsed_args.set_trace_level)}"
-        )
-    elif parsed_args.list_files:
-        for name, size in send_helper.get_files():
-            print(f"{name} ({round(size/1024)}KB)")
-    elif parsed_args.download_file:
-        filtered_files: list[tuple[str, int]] = [
-            tup
-            for tup in send_helper.get_files()
-            if tup[0] == parsed_args.download_file
-        ]
-        if not filtered_files or len(filtered_files) == 0:
-            print(f"Unknown file name {parsed_args.download_file}")
-            return
-        filtered_file = filtered_files[0]
-        downloaded_file = embody_serial.download_file(
-            file_name=filtered_file[0], size=filtered_file[1]
-        )
-        print(f"Downloaded file {downloaded_file} (size {filtered_file[1]})")
+            exit(0)
+        elif parsed_args.list_files:
+            files = send_helper.get_files()
+            if len(files) > 0:
+                for name, size in send_helper.get_files():
+                    print(f"{name} ({round(size/1024)}KB)")
+            else:
+                print("[]")
+            exit(0)
+        elif parsed_args.download_file:
+            return __download_file(
+                parsed_args.download_file, embody_serial, send_helper
+            )
+            exit(0)
+    finally:
+        embody_serial.shutdown()
+
+
+def __download_file(
+    file_name: str, embody_serial: EmbodySerial, send_helper: EmbodySendHelper
+):
+    filtered_files: list[tuple[str, int]] = [
+        tup for tup in send_helper.get_files() if tup[0] == file_name
+    ]
+    if not filtered_files or len(filtered_files) == 0:
+        print(f"Unknown file name {file_name}")
         return
+    filtered_file = filtered_files[0]
+    start = time.time()
+    downloaded_file = embody_serial.download_file(
+        file_name=filtered_file[0], size=filtered_file[1]
+    )
+    end = time.time()
+    print(
+        f"{file_name} downloaded to {downloaded_file} ({round(filtered_file[1]/1024,2)}KB)"
+        f"- ({round((filtered_file[1]/1024)/(end-start),2)}KB/s)"
+    )
 
 
 def __get_args(args):
@@ -95,7 +118,7 @@ def __get_parser():
         "--log-level",
         help=f"Log level ({log_levels})",
         choices=log_levels,
-        default="INFO",
+        default="WARNING",
     )
     parser.add_argument(
         "--channel",
