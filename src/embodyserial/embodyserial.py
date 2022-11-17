@@ -278,7 +278,6 @@ class _ReaderThread(threading.Thread):
         """Stop the reader thread"""
         if not self.alive:
             return
-        self.resume()
         self.alive = False
         if hasattr(self.__serial, "cancel_read"):
             self.__serial.cancel_read()

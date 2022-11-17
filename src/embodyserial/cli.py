@@ -48,10 +48,7 @@ def main(args=None):
             print(f"{getattr(send_helper, get_attributes_dict.get(parsed_args.get))()}")
             exit(0)
         elif parsed_args.get_all:
-            for attrib in get_attributes_dict.keys():
-                print(
-                    f"{attrib}: {getattr(send_helper, get_attributes_dict.get(attrib))()}"
-                )
+            __get_all_attributes(send_helper)
             exit(0)
         elif parsed_args.set_time:
             print(f"Set current time: {send_helper.set_current_timestamp()}")
@@ -63,20 +60,42 @@ def main(args=None):
             )
             exit(0)
         elif parsed_args.list_files:
-            files = send_helper.get_files()
-            if len(files) > 0:
-                for name, size in send_helper.get_files():
-                    print(f"{name} ({round(size/1024)}KB)")
-            else:
-                print("[]")
+            __list_files(send_helper)
             exit(0)
         elif parsed_args.download_file:
             return __download_file(
                 parsed_args.download_file, embody_serial, send_helper
             )
             exit(0)
+        elif parsed_args.download_files:
+            __download_files(embody_serial, send_helper)
+            exit(0)
     finally:
         embody_serial.shutdown()
+
+
+def __get_all_attributes(send_helper):
+    for attrib in get_attributes_dict.keys():
+        print(f"{attrib}: {getattr(send_helper, get_attributes_dict.get(attrib))()}")
+
+
+def __list_files(send_helper):
+    files = send_helper.get_files()
+    if len(files) > 0:
+        for name, size in send_helper.get_files():
+            print(f"{name} ({round(size/1024)}KB)")
+    else:
+        print("[]")
+
+
+def __download_files(embody_serial: EmbodySerial, send_helper: EmbodySendHelper):
+    files = send_helper.get_files()
+    if len(files) == 0:
+        print("No files on device")
+        return
+    print(f"Found {len(files)} {'files' if len(files) > 1 else 'file'}")
+    for file in files:
+        __do_download_file(file, embody_serial, send_helper)
 
 
 def __download_file(
@@ -88,15 +107,19 @@ def __download_file(
     if not filtered_files or len(filtered_files) == 0:
         print(f"Unknown file name {file_name}")
         return
-    filtered_file = filtered_files[0]
+    __do_download_file(filtered_files[0], embody_serial, send_helper)
+
+
+def __do_download_file(
+    file: tuple[str, int], embody_serial: EmbodySerial, send_helper: EmbodySendHelper
+):
+    print(f"Downloading: {file[0]}")
     start = time.time()
-    downloaded_file = embody_serial.download_file(
-        file_name=filtered_file[0], size=filtered_file[1]
-    )
+    downloaded_file = embody_serial.download_file(file_name=file[0], size=file[1])
     end = time.time()
     print(
-        f"{file_name} downloaded to {downloaded_file} ({round(filtered_file[1]/1024,2)}KB)"
-        f"- ({round((filtered_file[1]/1024)/(end-start),2)}KB/s)"
+        f"{file[0]} downloaded to {downloaded_file} ({round(file[1]/1024,2)}KB)"
+        f" @ ({round((file[1]/1024)/(end-start),2)}KB/s)"
     )
 
 
@@ -140,6 +163,9 @@ def __get_parser():
     )
     parser.add_argument(
         "--download-file", help="Download specified file", type=str, default=None
+    )
+    parser.add_argument(
+        "--download-files", help="Download all files", action="store_true", default=None
     )
     parser.add_argument(
         "--set-trace-level", help="Set trace level", type=int, default=None
