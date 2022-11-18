@@ -29,11 +29,13 @@
 
 ## Installation
 
-You can install _Embody Serial Communicator_ via [pip] from private Github repo:
+You can install _Embody Serial_ via [pip]:
 
 ```console
-$ pip install "git+https://github.com/aidee-health/embody-serial@v1.0.4#egg=embodyserial"
+$ pip install embody-serial
 ```
+
+This adds `embody-serial` as a library, but also provides the CLI application with the same name.
 
 ## Usage
 
@@ -49,7 +51,7 @@ print(f"Serial no: {send_helper.get_serial_no()}")
 embody_serial.shutdown()
 ```
 
-If you want to see more of what happens under the hood, activate debug logging:
+If you want to see more of what happens under the hood, activate debug logging before setting up `EmbodySerial`:
 
 ```python
 import logging
@@ -59,7 +61,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 ## Using the application from the command line
 
-The application also supports command line arguments.
+The application also provides a CLI application that is automatically added to the path when installing via pip.
 
 Once installed with pip, type:
 
@@ -69,28 +71,37 @@ embody-serial --help
 
 To see which options are available.
 
-### Example 1 - List all attribute values
+> **Note**
+> The serial port is automatically detected, but can be overridden by using the `--device` option.
+
+### Example - List all attribute values
 
 ```shell
-embody-serial --device COM3 --get-all
+embody-serial --get-all
 ```
 
-### Example 2 - Get serial no of device
+### Example - Get serial no of device
 
 ```shell
-embody-serial --device COM3 --get serialno
+embody-serial --get serialno
 ```
 
-### Example 3 - List files over serial port
+### Example - List files over serial port
 
 ```shell
-embody-serial --device /dev/cu.usbmodem2101 --list-files
+embody-serial --list-files
 ```
 
-### Example 3 - Set time current time (UTC)
+### Example - Set time current time (UTC)
 
 ```shell
-embody-serial --device COM3 --set-time
+embody-serial --set-time
+```
+
+### Example - Download files
+
+```shell
+embody-serial --download-files
 ```
 
 ## Contributing
