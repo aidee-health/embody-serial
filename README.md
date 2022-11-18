@@ -1,10 +1,18 @@
 # Embody Serial
 
+[![PyPI](https://img.shields.io/pypi/v/embody-serial.svg)][pypi_]
+[![Status](https://img.shields.io/pypi/status/embody-serial.svg)][status]
+[![Python Version](https://img.shields.io/pypi/pyversions/embody-serial)][python version]
+[![License](https://img.shields.io/pypi/l/embody-serial)][license]
+
 [![Tests](https://github.com/aidee-health/embody-serial/workflows/Tests/badge.svg)][tests]
 
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)][pre-commit]
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)][black]
 
+[pypi_]: https://pypi.org/project/embody-serial/
+[status]: https://pypi.org/project/embody-serial/
+[python version]: https://pypi.org/project/embody-serial
 [tests]: https://github.com/aidee-health/embody-serial/actions?workflow=Tests
 [pre-commit]: https://github.com/pre-commit/pre-commit
 [black]: https://github.com/psf/black
