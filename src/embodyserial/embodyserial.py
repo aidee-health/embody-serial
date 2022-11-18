@@ -5,19 +5,28 @@ and subscribing for incoming messages from the device.
 """
 import concurrent.futures
 import logging
+import os
 import struct
+import tempfile
 import threading
+import time
 from abc import ABC
 from abc import abstractmethod
 from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError
 from typing import Optional
 
 import serial
 import serial.tools.list_ports
 from embodycodec import codec
+from embodycodec import crc
+from embodycodec import types
 from serial.serialutil import SerialBase
 from serial.serialutil import SerialException
+from serial.tools import list_ports_common
 
+from .exceptions import CrcError
+from .exceptions import MissingResponseError
 from .listeners import ConnectionListener
 from .listeners import MessageListener
 from .listeners import ResponseMessageListener
@@ -81,6 +90,10 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         """Send a message. Wait for a response or timeout"""
         return self.__sender.send_message_and_wait_for_response(msg, timeout)
 
+    def add_message_listener(self, listener: MessageListener) -> None:
+        """Register message listener."""
+        self.__reader.add_message_listener(listener)
+
     def shutdown(self) -> None:
         """Shutdown serial connection and all threads/executors."""
         with self.__shutdown_lock:
@@ -97,23 +110,52 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         if not connected:
             self.shutdown()
 
+    def download_file(self, file_name: str, size: int, timeout: int = 300) -> str:
+        """Download file from device and write to temporary file.
+
+        Raises:
+          MissingResponseError if no response.
+          CrcError if invalid crc.
+        """
+        if size == 0:
+            return tempfile.NamedTemporaryFile(delete=False).name
+        self.send_async(codec.GetFileUart(types.File(file_name)))
+        return self.__reader.download_file(size, timeout)
+
     @staticmethod
     def __find_serial_port() -> str:
         """Find first matching serial port name."""
         manufacturers = ["Datek", "Aidee"]
-        descriptions = ["IsenseU", "G3"]
+        descriptions = ["IsenseU", "G3", "EmBody"]
         all_available_ports = serial.tools.list_ports.comports()
         if len(all_available_ports) == 0:
             raise SerialException("No available serial ports")
         for port in all_available_ports:
-            for description in descriptions:
-                if description in port.description:
-                    return port.device
-            if not port.manufacturer:
-                continue
-            if any(manufacturer in port.manufacturer for manufacturer in manufacturers):
+            candidate: Optional[list_ports_common.ListPortInfo] = None
+            if any(description in port.description for description in descriptions):
+                candidate = port
+            elif port.manufacturer and any(
+                manufacturer in port.manufacturer for manufacturer in manufacturers
+            ):
+                candidate = port
+            if candidate and EmbodySerial.__port_is_alive(port):
                 return port.device
         raise SerialException("No matching serial ports found")
+
+    @staticmethod
+    def __port_is_alive(port: SerialBase) -> bool:
+        """Check if port has an active embody device."""
+        logging.info(f"Checking candidate port: {port}")
+        try:
+            ser = serial.Serial(port=port.device, baudrate=115200, timeout=3)
+            ser.write(codec.Heartbeat().encode())
+            expected_response = codec.HeartbeatResponse().encode()
+            response = ser.read(len(expected_response))
+            ser.close()
+            return response == expected_response
+        except Exception as e:
+            logging.info(f"Exception raised for port check: {e}")
+            return False
 
 
 class _MessageSender(ResponseMessageListener):
@@ -205,7 +247,32 @@ class _ReaderThread(threading.Thread):
         self.__message_listeners: list[MessageListener] = []
         self.__response_message_listeners: list[ResponseMessageListener] = []
         self.__connection_listeners: list[ConnectionListener] = []
+        self.__file_mode = False
+        self.__file_size = -1
+        self.__file_name: Optional[str] = None
+        self.__file_error: Optional[Exception] = None
+        self.__file_event = threading.Event()
         self.alive = True
+
+    def download_file(self, size: int, timeout: int = 300) -> str:
+        """Set reader in file mode and read file."""
+        self.__reset_file_mode()
+        self.__file_size = size
+        self.__file_mode = True
+        try:
+            if not self.__file_event.wait(timeout) or not self.__file_name:
+                raise MissingResponseError("No file received within timeout")
+            if self.__file_error:
+                raise self.__file_error
+            return self.__file_name
+        finally:
+            self.__reset_file_mode()
+
+    def __reset_file_mode(self) -> None:
+        self.__file_event.clear()
+        self.__file_size = -1
+        self.__file_name = None
+        self.__file_error = None
 
     def stop(self) -> None:
         """Stop the reader thread"""
@@ -227,39 +294,86 @@ class _ReaderThread(threading.Thread):
         while self.alive and self.__serial.is_open:
             try:
                 raw_header = self.__serial.read(3)
-                logging.debug(f"RECEIVE: Received header {raw_header.hex()}")
-                (
-                    msg_type,
-                    length,
-                ) = struct.unpack(">BH", raw_header)
-                logging.debug(
-                    f"RECEIVE: Received msg type: {msg_type}, length: {length}"
-                )
-                raw_message = raw_header + self.__serial.read(size=length - 3)
-                logging.debug(f"RECEIVE: Received raw msg: {raw_message.hex()}")
+                if not raw_header or len(raw_header) < 3:
+                    logging.info("Interrupted. Exiting reader thread.")
+                    break
+                if self.__file_mode:
+                    self.__read_file(raw_header)
+                    self.__reset_file_mode()
+                else:
+                    self.__read_protocol_message(raw_header)
             except serial.SerialException:
                 # probably some I/O problem such as disconnected USB serial adapters -> exit
-                logging.info("Serial port is closed (SerialException)", exc_info=False)
+                logging.info("Serial port is closed (SerialException)")
                 break
             except OSError:
-                logging.warning(
-                    "OS Error reading from socket (OSError)", exc_info=False
-                )
+                logging.info("OS Error reading from socket (OSError)")
                 break
-            else:
-                if raw_message:
-                    try:
-                        msg = codec.decode(raw_message)
-                        if msg:
-                            self.__handle_incoming_message(msg)
-                    except Exception as e:
-                        logging.warning(
-                            f"Error processing raw message {raw_message}, error: {str(e)}",
-                            exc_info=True,
-                        )
-                        continue
         self.alive = False
         self.__notify_connection_listeners(connected=False)
+
+    def __read_file(self, first_bytes: bytes) -> None:
+        buffer_size = 1024
+        remaining_size = self.__file_size - len(first_bytes)
+        calculated_crc = crc.crc16(data=first_bytes)
+        tmp = tempfile.NamedTemporaryFile(delete=False)
+        start = time.time()
+        tmp.write(first_bytes)
+        try:
+            while remaining_size > 0 and self.__serial.is_open:
+                chunk = self.__serial.read(min(buffer_size, remaining_size))
+                if not chunk:
+                    chunk = self.__serial.read(min(buffer_size, remaining_size))
+                if not chunk:
+                    raise MissingResponseError("File download failed")
+                calculated_crc = crc.crc16(data=chunk, existing_crc=calculated_crc)
+                logging.debug(
+                    f"Read file: {self.__file_size - remaining_size} of {self.__file_size} bytes"
+                )
+                tmp.write(chunk)
+                remaining_size -= len(chunk)
+                time.sleep(0.001)
+            raw_crc_received = self.__serial.read(2)
+            end = time.time()
+            logging.info(
+                f"Read {round(self.__file_size/1024,2)}KB in {end-start} secs - {round((self.__file_size/1024)/(end-start),2)}KB/s"
+            )
+            (crc_received,) = struct.unpack(">H", raw_crc_received)
+            if not crc_received == calculated_crc:
+                self.__file_error = CrcError(
+                    f"Invalid crc - expected {hex(crc_received)}, received {hex(calculated_crc)}"
+                )
+            else:
+                self.__file_name = tmp.name
+            self.__file_event.set()
+        finally:
+            tmp.close()
+            os.unlink(tmp.name)
+
+    def __read_protocol_message(self, raw_header: bytes) -> None:
+        """Read next message from input."""
+        logging.debug(f"RECEIVE: Received header {raw_header.hex()}")
+        msg_type, length = struct.unpack(">BH", raw_header)
+        logging.debug(f"RECEIVE: Received msg type: {msg_type}, length: {length}")
+        remaining_length = length - 3
+        raw_message = raw_header
+        while remaining_length > 0:
+            raw_message += self.__serial.read(size=min(remaining_length, 1024))
+            remaining_length -= 1024
+            time.sleep(0.001)
+        if raw_message:
+            logging.debug(
+                f"RECEIVE: Received raw msg: {raw_message.hex() if len(raw_message) <= 1024 else raw_message[0:1023].hex()}"
+            )
+            try:
+                msg = codec.decode(raw_message)
+                if msg:
+                    self.__handle_incoming_message(msg)
+            except Exception as e:
+                logging.warning(
+                    f"Error processing protocol message, error: {str(e)}",
+                    exc_info=True,
+                )
 
     def __handle_incoming_message(self, msg: codec.Message) -> None:
         if msg.msg_type < 0x80:
@@ -309,6 +423,9 @@ class _ReaderThread(threading.Thread):
     def add_response_message_listener(self, listener: ResponseMessageListener) -> None:
         self.__response_message_listeners.append(listener)
 
+    def add_connection_listener(self, listener: ConnectionListener) -> None:
+        self.__connection_listeners.append(listener)
+
     def __notify_connection_listeners(self, connected: bool) -> None:
         if len(self.__connection_listeners) == 0:
             return
@@ -325,9 +442,6 @@ class _ReaderThread(threading.Thread):
             logging.warning(
                 f"Error notifying connection listener: {str(e)}", exc_info=True
             )
-
-    def add_connection_listener(self, listener: ConnectionListener) -> None:
-        self.__connection_listeners.append(listener)
 
 
 if __name__ == "__main__":

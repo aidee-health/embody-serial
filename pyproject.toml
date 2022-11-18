@@ -19,7 +19,7 @@ Changelog = "https://github.com/aidee-health/embody-serial/releases"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.10"
-embody-protocol-codec = {git = "https://github.com/aidee-health/embody-protocol-codec.git", tag = "v1.0.4"}
+embody-codec = ">1.0.9"
 pyserial = "^3.5"
 
 [tool.poetry.dev-dependencies]

@@ -2,6 +2,7 @@
 
 import threading
 import time
+from typing import Optional
 
 from embodycodec import codec
 from serial.serialutil import SerialBase
@@ -22,7 +23,7 @@ def test_send_receive_sync() -> None:
 class DummySerial(SerialBase):
     """Serial port implementation for plain sockets."""
 
-    def __init__(self, response_data: bytes = None) -> None:
+    def __init__(self, response_data: Optional[bytes] = None) -> None:
         self.__response_data_available = threading.Event()
         self.__response_data = response_data
         self.__response_data_pos = 0

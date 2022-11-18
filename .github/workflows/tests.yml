@@ -38,11 +38,6 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - name: Add ssh agent for access to private repo embody codec
-        uses: webfactory/ssh-agent@v0.7.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
       - name: Upgrade pip
         run: |
           pip install --constraint=.github/workflows/constraints.txt pip
