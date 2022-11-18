@@ -8,7 +8,6 @@ Here is a list of important resources for contributors:
 
 - [Source Code]
 - [Issue Tracker]
-- [Code of Conduct]
 
 [mit license]: https://opensource.org/licenses/MIT
 [source code]: https://github.com/aidee-health/embody-serial
@@ -111,5 +110,3 @@ This will allow a chance to talk it over with the owners and validate your appro
 [pull request]: https://github.com/aidee-health/embody-serial/pulls
 
 <!-- github-only -->
-
-[code of conduct]: CODE_OF_CONDUCT.md
