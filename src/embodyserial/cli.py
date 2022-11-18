@@ -70,6 +70,25 @@ def main(args=None):
         elif parsed_args.download_files:
             __download_files(embody_serial, send_helper)
             exit(0)
+        elif parsed_args.delete_file:
+            print(
+                f"Delete file {parsed_args.delete_file}:"
+                f" {send_helper.delete_file(file_name=parsed_args.delete_file)}"
+            )
+            exit(0)
+        elif parsed_args.delete_files:
+            print(f"Delete files: {send_helper.delete_all_files()}")
+            exit(0)
+        elif parsed_args.reformat_disk:
+            print(f"Reformatting disk: {send_helper.reformat_disk()}")
+            exit(0)
+        elif parsed_args.reset:
+            print(f"Resetting device: {send_helper.reset_device()}")
+            exit(0)
+        elif parsed_args.reboot:
+            print(f"Rebooting device: {send_helper.reboot_device()}")
+            exit(0)
+
     finally:
         embody_serial.shutdown()
 
@@ -175,6 +194,21 @@ def __get_parser():
         help="List all files on device",
         action="store_true",
         default=None,
+    )
+    parser.add_argument(
+        "--delete-file", help="Delete specified file", type=str, default=None
+    )
+    parser.add_argument(
+        "--delete-files", help="Delete all files", action="store_true", default=None
+    )
+    parser.add_argument(
+        "--reformat-disk", help="Reformat disk", action="store_true", default=None
+    )
+    parser.add_argument(
+        "--reset", help="Reset device", action="store_true", default=None
+    )
+    parser.add_argument(
+        "--reboot", help="Reboot device", action="store_true", default=None
     )
 
     parser.add_argument(
