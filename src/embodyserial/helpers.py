@@ -145,7 +145,9 @@ class EmbodySendHelper:
 
     def reset_device(self) -> bool:
         response = self.__sender.send(
-            msg=codec.ExecuteCommand(command_id=codec.ExecuteCommand.RESET_DEVICE),
+            msg=codec.ExecuteCommand(
+                command_id=codec.ExecuteCommand.RESET_DEVICE, value=b""
+            ),
             timeout=self.__send_timeout,
         )
         if not response:
@@ -157,7 +159,9 @@ class EmbodySendHelper:
 
     def reboot_device(self) -> bool:
         response = self.__sender.send(
-            msg=codec.ExecuteCommand(command_id=codec.ExecuteCommand.REBOOT_DEVICE),
+            msg=codec.ExecuteCommand(
+                command_id=codec.ExecuteCommand.REBOOT_DEVICE, value=b""
+            ),
             timeout=self.__send_timeout,
         )
         if not response:
