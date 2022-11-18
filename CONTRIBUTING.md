@@ -7,7 +7,6 @@ welcomes contributions in the form of bug reports, feature requests, and pull re
 Here is a list of important resources for contributors:
 
 - [Source Code]
-- [Documentation]
 - [Issue Tracker]
 - [Code of Conduct]
 
@@ -46,14 +45,6 @@ Install the package with development requirements:
 
 ```console
 $ poetry install
-```
-
-You can now run an interactive Python session,
-or the command-line interface:
-
-```console
-$ poetry run python
-$ poetry run embody-serial
 ```
 
 [poetry]: https://python-poetry.org/

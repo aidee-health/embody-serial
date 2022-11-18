@@ -23,7 +23,7 @@ except ImportError:
 
 
 package = "embodyserial"
-python_versions = ["3.9"]  # Add "3.10 as well when it's fully ready"
+python_versions = ["3.9"]
 nox.needs_version = ">= 2021.6.6"
 nox.options.sessions = (
     "pre-commit",

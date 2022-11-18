@@ -21,7 +21,7 @@ def test_send_receive_sync() -> None:
 
 
 class DummySerial(SerialBase):
-    """Serial port implementation for plain sockets."""
+    """Serial port implementation for testing."""
 
     def __init__(self, response_data: Optional[bytes] = None) -> None:
         self.__response_data_available = threading.Event()
