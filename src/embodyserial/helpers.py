@@ -143,6 +143,34 @@ class EmbodySendHelper:
         assert isinstance(response, codec.ReformatDiskResponse)
         return True
 
+    def reset_device(self) -> bool:
+        response = self.__sender.send(
+            msg=codec.ExecuteCommand(
+                command_id=codec.ExecuteCommand.RESET_DEVICE, value=b""
+            ),
+            timeout=self.__send_timeout,
+        )
+        if not response:
+            raise MissingResponseError()
+        if isinstance(response, codec.NackResponse):
+            raise NackError(response)
+        assert isinstance(response, codec.ExecuteCommand)
+        return True
+
+    def reboot_device(self) -> bool:
+        response = self.__sender.send(
+            msg=codec.ExecuteCommand(
+                command_id=codec.ExecuteCommand.REBOOT_DEVICE, value=b""
+            ),
+            timeout=self.__send_timeout,
+        )
+        if not response:
+            raise MissingResponseError()
+        if isinstance(response, codec.NackResponse):
+            raise NackError(response)
+        assert isinstance(response, codec.ExecuteCommand)
+        return True
+
     def delete_all_files(self) -> bool:
         response = self.__sender.send(
             msg=codec.DeleteAllFiles(), timeout=self.__send_timeout

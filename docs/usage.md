@@ -1,7 +1,7 @@
 # Usage
 
-```{eval-rst}
-.. click:: embodyserial.__main__:main
-    :prog: embody-serial-communicator
-    :nested: full
+To see how to use the CLI (Command Line Interface) application, type:
+
+```
+embody-serial --help
 ```
