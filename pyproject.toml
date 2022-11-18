@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "embody-serial"
 version = "1.0.5"
-description = "Embody Serial Communicator"
-authors = ["Espen Westgaard <espen@aidee.io>"]
+description = "Communicate with the embody device over a serial port"
+authors = ["Aidee Health AS <hello@aidee.io>"]
 license = "MIT"
 readme = "README.md"
 homepage = "https://github.com/aidee-health/embody-serial"
@@ -11,14 +11,14 @@ packages = [
     { include = "embodyserial", from = "src" },
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
 ]
 
 [tool.poetry.urls]
 Changelog = "https://github.com/aidee-health/embody-serial/releases"
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.10"
+python = ">=3.8,<=3.11"
 embody-codec = ">1.0.9"
 pyserial = "^3.5"
 
