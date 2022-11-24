@@ -189,7 +189,7 @@ pipenv = ["pipenv"]
 
 [[package]]
 name = "embody-codec"
-version = "1.0.10"
+version = "1.0.11"
 description = "Embody Protocol Codec"
 category = "main"
 optional = false
@@ -1227,8 +1227,8 @@ dparse = [
     {file = "dparse-0.6.2.tar.gz", hash = "sha256:d45255bda21f998bc7ddf2afd5e62505ba6134756ba2d42a84c56b0826614dfe"},
 ]
 embody-codec = [
-    {file = "embody_codec-1.0.10-py3-none-any.whl", hash = "sha256:0939d9b39ed3b225ce8163e5c2829b272a461428e5bb13e1fe85f991743b39aa"},
-    {file = "embody_codec-1.0.10.tar.gz", hash = "sha256:edb49be5745eb6c59650adc811fd1f3513a26b820390e97303d1a68e3f7951b2"},
+    {file = "embody_codec-1.0.11-py3-none-any.whl", hash = "sha256:01e8d11d803f1090078353dab680be5d17625bff10f86bf9539d4b312520197c"},
+    {file = "embody_codec-1.0.11.tar.gz", hash = "sha256:86ac5260818f4b8e0d6b365897e4cf7558372c9f0c2958e515de6bd84631c1bb"},
 ]
 filelock = [
     {file = "filelock-3.8.0-py3-none-any.whl", hash = "sha256:617eb4e5eedc82fc5f47b6d61e4d11cb837c56cb4544e39081099fa17ad109d4"},
@@ -1550,6 +1550,10 @@ restructuredtext-lint = [
 safety = [
     {file = "safety-2.3.2-py3-none-any.whl", hash = "sha256:d824cccd76fcf451c745d0a280dabc5176903878a68b9b9a2ec7dbfc2f8d03ff"},
     {file = "safety-2.3.2.tar.gz", hash = "sha256:7ed8d71f5ba7590d1c9abfa22c72a64de389ae2e07c6732b1c90955a168c55bf"},
+]
+setuptools = [
+    {file = "setuptools-65.6.0-py3-none-any.whl", hash = "sha256:6211d2f5eddad8757bd0484923ca7c0a6302ebc4ab32ea5e94357176e0ca0840"},
+    {file = "setuptools-65.6.0.tar.gz", hash = "sha256:d1eebf881c6114e51df1664bc2c9133d022f78d12d5f4f665b9191f084e2862d"},
 ]
 setuptools = [
     {file = "setuptools-65.6.0-py3-none-any.whl", hash = "sha256:6211d2f5eddad8757bd0484923ca7c0a6302ebc4ab32ea5e94357176e0ca0840"},
