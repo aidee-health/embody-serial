@@ -5,7 +5,6 @@ and subscribing for incoming messages from the device.
 """
 import concurrent.futures
 import logging
-import os
 import struct
 import tempfile
 import threading
@@ -354,7 +353,6 @@ class _ReaderThread(threading.Thread):
             self.__file_event.set()
         finally:
             tmp.close()
-            os.unlink(tmp.name)
 
     def __read_protocol_message(self, raw_header: bytes) -> None:
         """Read next message from input."""
