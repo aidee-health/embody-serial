@@ -5,7 +5,6 @@ and subscribing for incoming messages from the device.
 """
 import concurrent.futures
 import logging
-import os
 import struct
 import tempfile
 import threading
@@ -249,6 +248,7 @@ class _ReaderThread(threading.Thread):
         self.__connection_listeners: list[ConnectionListener] = []
         self.__file_mode = False
         self.__file_size = -1
+        self.__file_timeout = 0
         self.__file_name: Optional[str] = None
         self.__file_error: Optional[Exception] = None
         self.__file_event = threading.Event()
@@ -257,6 +257,7 @@ class _ReaderThread(threading.Thread):
     def download_file(self, size: int, timeout: int = 300) -> str:
         """Set reader in file mode and read file."""
         self.__reset_file_mode()
+        self.__file_timeout = timeout
         self.__file_size = size
         self.__file_mode = True
         try:
@@ -273,6 +274,7 @@ class _ReaderThread(threading.Thread):
         self.__file_size = -1
         self.__file_name = None
         self.__file_error = None
+        self.__file_mode = False
 
     def stop(self) -> None:
         """Stop the reader thread"""
@@ -316,23 +318,26 @@ class _ReaderThread(threading.Thread):
         buffer_size = 1024
         remaining_size = self.__file_size - len(first_bytes)
         calculated_crc = crc.crc16(data=first_bytes)
-        tmp = tempfile.NamedTemporaryFile(delete=False)
+        tmp = tempfile.NamedTemporaryFile(delete=False, buffering=buffer_size)
         start = time.time()
         tmp.write(first_bytes)
         try:
             while remaining_size > 0 and self.__serial.is_open:
                 chunk = self.__serial.read(min(buffer_size, remaining_size))
                 if not chunk:
-                    chunk = self.__serial.read(min(buffer_size, remaining_size))
-                if not chunk:
                     raise MissingResponseError("File download failed")
                 calculated_crc = crc.crc16(data=chunk, existing_crc=calculated_crc)
-                logging.debug(
-                    f"Read file: {self.__file_size - remaining_size} of {self.__file_size} bytes"
-                )
                 tmp.write(chunk)
                 remaining_size -= len(chunk)
+                logging.debug(
+                    f"Read file. Remaining: {remaining_size} of {self.__file_size}"
+                    f" bytes (in waiting: {self.__serial.in_waiting} bytes)"
+                )
                 time.sleep(0.001)
+                if time.time() - start > self.__file_timeout:
+                    raise TimeoutError(
+                        f"Reading file took too long. Read {self.__file_size - remaining_size} bytes"
+                    )
             raw_crc_received = self.__serial.read(2)
             end = time.time()
             logging.info(
@@ -348,7 +353,6 @@ class _ReaderThread(threading.Thread):
             self.__file_event.set()
         finally:
             tmp.close()
-            os.unlink(tmp.name)
 
     def __read_protocol_message(self, raw_header: bytes) -> None:
         """Read next message from input."""

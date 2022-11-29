@@ -134,12 +134,15 @@ def __do_download_file(
 ):
     print(f"Downloading: {file[0]}")
     start = time.time()
-    downloaded_file = embody_serial.download_file(file_name=file[0], size=file[1])
-    end = time.time()
-    print(
-        f"{file[0]} downloaded to {downloaded_file} ({round(file[1]/1024,2)}KB)"
-        f" @ ({round((file[1]/1024)/(end-start),2)}KB/s)"
-    )
+    try:
+        downloaded_file = embody_serial.download_file(file_name=file[0], size=file[1])
+        end = time.time()
+        print(
+            f"{file[0]} downloaded to {downloaded_file} ({round(file[1]/1024,2)}KB)"
+            f" @ ({round((file[1]/1024)/(end-start),2)}KB/s)"
+        )
+    except Exception as e:
+        print(f"Unable to download file: {e}")
 
 
 def __get_args(args):
