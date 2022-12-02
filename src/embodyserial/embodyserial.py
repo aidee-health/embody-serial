@@ -244,7 +244,10 @@ class _ReaderThread(threading.Thread):
         self.daemon = True
         self.setName("reader")
         self.__serial = serial_instance
-        self.__read_timeout = serial_instance.timeout
+        self.__read_timeout: Optional[int] = None
+        if hasattr(self.__serial, "timeout"):
+            self.__read_timeout = serial_instance.timeout
+
         self.__message_listener_executor = ThreadPoolExecutor(
             max_workers=1, thread_name_prefix="rcv-worker"
         )
@@ -294,7 +297,7 @@ class _ReaderThread(threading.Thread):
             raise e
         finally:
             self.__reset_file_mode()
-            if hasattr(self.__serial, "timeout"):
+            if hasattr(self.__serial, "timeout") and self.__read_timeout:
                 self.__serial.timeout = self.__read_timeout
 
     def __reset_file_mode(self) -> None:
