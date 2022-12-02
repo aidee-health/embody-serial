@@ -275,7 +275,8 @@ class _ReaderThread(threading.Thread):
         timeout: int = 300,
     ) -> str:
         """Set reader in file mode and read file."""
-        self.__serial.timeout = 5
+        if hasattr(self.__serial, "timeout"):
+            self.__serial.timeout = 5
         self.__reset_file_mode()
         self.__file_timeout = timeout
         self.__file_size = size
@@ -289,11 +290,12 @@ class _ReaderThread(threading.Thread):
                 raise self.__file_error
             return self.__file_name
         except Exception as e:
-            self.__async_notify_file_download_failed(self.__original_file_name, e)
+            self.__async_notify_file_download_failed(e)
             raise e
         finally:
             self.__reset_file_mode()
-            self.__serial.timeout = self.__read_timeout
+            if hasattr(self.__serial, "timeout"):
+                self.__serial.timeout = self.__read_timeout
 
     def __reset_file_mode(self) -> None:
         self.__file_event.clear()
@@ -315,8 +317,9 @@ class _ReaderThread(threading.Thread):
         self.__response_message_listener_executor.shutdown(
             wait=False, cancel_futures=False
         )
-        if self.__file_download_listener:
-            self.__file_download_listener.shutdown(wait=False, cancel_futures=False)
+        self.__file_download_listener_executor.shutdown(
+            wait=False, cancel_futures=False
+        )
         self.join(2)
 
     def run(self) -> None:
@@ -399,8 +402,7 @@ class _ReaderThread(threading.Thread):
     def __async_notify_file_download_in_progress(
         self, size: int, progress: float, kbps: float
     ):
-        if self.__file_download_listener:
-            logging.debug("Notifying file download in progress")
+        if self.__file_download_listener and self.__original_file_name:
             self.__file_download_listener_executor.submit(
                 _ReaderThread.__notify_file_download_progress,
                 self.__file_download_listener,
@@ -411,8 +413,11 @@ class _ReaderThread(threading.Thread):
             )
 
     def __async_notify_file_download_completed(self, kbps: float):
-        if self.__file_download_listener:
-            logging.debug("Notifying file download completed")
+        if (
+            self.__file_download_listener
+            and self.__original_file_name
+            and self.__file_name
+        ):
             self.__file_download_listener_executor.submit(
                 _ReaderThread.__notify_file_download_complete,
                 self.__file_download_listener,
@@ -422,8 +427,7 @@ class _ReaderThread(threading.Thread):
             )
 
     def __async_notify_file_download_failed(self, error: Exception):
-        if self.__file_download_listener:
-            logging.debug("Notifying file download failed")
+        if self.__file_download_listener and self.__original_file_name:
             self.__file_download_listener_executor.submit(
                 _ReaderThread.__notify_file_download_failed,
                 self.__file_download_listener,
@@ -527,13 +531,13 @@ class _ReaderThread(threading.Thread):
     @staticmethod
     def __notify_file_download_progress(
         listener: FileDownloadListener,
-        size: int,
         original_file_name: str,
+        size: int,
         progress: float,
         kbps: float,
     ) -> None:
         try:
-            listener.on_file_download_progress(size, original_file_name, progress, kbps)
+            listener.on_file_download_progress(original_file_name, size, progress, kbps)
         except Exception as e:
             logging.warning(
                 f"Error notifying file download listener: {str(e)}", exc_info=True
@@ -552,7 +556,7 @@ class _ReaderThread(threading.Thread):
 
     @staticmethod
     def __notify_file_download_failed(
-        listener: FileDownloadListener, original_file_name: str, error: str
+        listener: FileDownloadListener, original_file_name: str, error: Exception
     ) -> None:
         try:
             listener.on_file_download_failed(original_file_name, error)
