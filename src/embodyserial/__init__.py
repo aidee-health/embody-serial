@@ -1,9 +1,8 @@
 """Initialize the embodyserial package."""
-import importlib.metadata as importlib_metadata
+import importlib.metadata
 
 
 try:
-    # This will read version from pyproject.toml
-    __version__ = importlib_metadata.version(__name__)
-except Exception:
-    __version__ = "unknown"
+    __version__ = importlib.metadata.version("embody-serial")
+except importlib.metadata.PackageNotFoundError:
+    __version__ = "0.0.0"
