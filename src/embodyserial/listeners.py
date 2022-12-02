@@ -37,16 +37,22 @@ class FileDownloadListener(ABC):
     """Listener interface for being notified of file download progress."""
 
     @abstractmethod
-    def on_file_download_progress(self, progress: float) -> None:
+    def on_file_download_progress(
+        self, original_file_name: str, progress: float, kbps: float
+    ) -> None:
         """Process file download progress."""
         pass
 
     @abstractmethod
-    def on_file_download_complete(self, original_file_name: str, path: str) -> None:
+    def on_file_download_complete(
+        self, original_file_name: str, path: str, kbps: float
+    ) -> None:
         """Process file download completion."""
         pass
 
     @abstractmethod
-    def on_file_download_failed(self, original_file_name: str, error: str) -> None:
+    def on_file_download_failed(
+        self, original_file_name: str, error: Exception
+    ) -> None:
         """Process file download failure."""
         pass
