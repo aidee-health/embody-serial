@@ -129,42 +129,9 @@ def __download_file(
     __do_download_file(filtered_files[0], embody_serial, send_helper)
 
 
-def __do_download_file(
-    file: tuple[str, int], embody_serial: EmbodySerial, send_helper: EmbodySendHelper
-):
-    print(f"Downloading: {file[0]}")
-
-    class _DownloadListener(FileDownloadListener):
-        def on_file_download_progress(
-            self, original_file_name: str, size: int, progress: float, kbps: float
-        ) -> None:
-            """Display progress in cli."""
-            __show_cli_progress_bar(progress, size, kbps)
-
-        def on_file_download_complete(
-            self, original_file_name: str, path: str, kbps: float
-        ) -> None:
-            """Process file download completion."""
-            print(f"{original_file_name} downloaded to {path} ({round(kbps)} kbps)")
-
-        def on_file_download_failed(
-            self, original_file_name: str, error: Exception
-        ) -> None:
-            """Process file download failure."""
-            pass
-
-    listener = _DownloadListener()
-    try:
-        embody_serial.download_file(
-            file_name=file[0], size=file[1], download_listener=listener
-        )
-    except Exception as e:
-        print(f"Unable to download file: {e}")
-
-
-def __show_cli_progress_bar(progress: int, total: int, kbps: float):
+def _show_cli_progress_bar(progress: float, total: int, kbps: float):
     bar_length = 20
-    percent = float(progress) / total
+    percent = progress / 100
     hashes = "#" * int(round(percent * bar_length))
     spaces = " " * (bar_length - len(hashes))
     sys.stdout.write(
@@ -173,6 +140,40 @@ def __show_cli_progress_bar(progress: int, total: int, kbps: float):
         )
     )
     sys.stdout.flush()
+
+
+def __do_download_file(
+    file: tuple[str, int], embody_serial: EmbodySerial, send_helper: EmbodySendHelper
+):
+    print(f"Downloading: {file[0]}")
+
+    class _DownloadListener(FileDownloadListener):
+        download_invocation_count = 0
+
+        def on_file_download_progress(
+            self, original_file_name: str, size: int, progress: float, kbps: float
+        ) -> None:
+            """Display progress in cli."""
+            if self.download_invocation_count % 10 == 0 or progress == 100:
+                _show_cli_progress_bar(progress, size, kbps)
+            self.download_invocation_count += 1
+
+        def on_file_download_complete(
+            self, original_file_name: str, path: str, kbps: float
+        ) -> None:
+            """Process file download completion."""
+            print(f" {original_file_name} downloaded to {path} (@{round(kbps)} kbps)")
+
+        def on_file_download_failed(
+            self, original_file_name: str, error: Exception
+        ) -> None:
+            """Process file download failure."""
+            pass
+
+    listener = _DownloadListener()
+    embody_serial.download_file(
+        file_name=file[0], size=file[1], download_listener=listener
+    )
 
 
 def __get_args(args):

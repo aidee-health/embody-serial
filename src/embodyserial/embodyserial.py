@@ -269,8 +269,8 @@ class _ReaderThread(threading.Thread):
 
     def download_file(
         self,
-        size: int,
         original_file_name: str,
+        size: int,
         download_listener: Optional[FileDownloadListener] = None,
         timeout: int = 300,
     ) -> str:
@@ -315,7 +315,8 @@ class _ReaderThread(threading.Thread):
         self.__response_message_listener_executor.shutdown(
             wait=False, cancel_futures=False
         )
-        self.__file_download_listener.shutdown(wait=False, cancel_futures=False)
+        if self.__file_download_listener:
+            self.__file_download_listener.shutdown(wait=False, cancel_futures=False)
         self.join(2)
 
     def run(self) -> None:
@@ -345,12 +346,10 @@ class _ReaderThread(threading.Thread):
 
     def __read_file(self, first_bytes: bytes) -> None:
         buffer_size = 1024
-        timeout_between_reads = 5
         remaining_size = self.__file_size - len(first_bytes)
         calculated_crc = crc.crc16(data=first_bytes)
         tmp = tempfile.NamedTemporaryFile(delete=False, buffering=buffer_size)
         start = time.time()
-        last_chunk_received = 0
         tmp.write(first_bytes)
         try:
             while remaining_size > 0 and self.__serial.is_open:
@@ -362,25 +361,23 @@ class _ReaderThread(threading.Thread):
                 remaining_size -= len(chunk)
                 now = time.time()
                 self.__async_notify_file_download_in_progress(
+                    self.__file_size,
                     round(
                         ((self.__file_size - remaining_size) / self.__file_size) * 100
                     ),
-                    round((self.__file_size - remaining_size) / (now - start), 2),
+                    round(((self.__file_size - remaining_size) / 1024) / (now - start)),
                 )
                 time.sleep(0.001)
                 if now - start > self.__file_timeout:
                     raise TimeoutError(
                         f"Reading file took too long. Read {self.__file_size - remaining_size} bytes"
                     )
-                if now - last_chunk_received > timeout_between_reads:
-                    raise TimeoutError(
-                        f"Reading file took too long. Last chunk received {now - last_chunk_received} seconds ago"
-                    )
-                last_chunk_received = now
             raw_crc_received = self.__serial.read(2)
             end = time.time()
             self.__async_notify_file_download_in_progress(
-                100, round((self.__file_size / 1024) / (end - start), 2)
+                self.__file_size,
+                100,
+                round((self.__file_size / 1024) / (end - start), 2),
             )
             logging.debug(
                 f"Read {round(self.__file_size/1024,2)}KB in {end-start} secs - {round((self.__file_size/1024)/(end-start),2)}KB/s"
@@ -403,18 +400,22 @@ class _ReaderThread(threading.Thread):
         self, size: int, progress: float, kbps: float
     ):
         if self.__file_download_listener:
+            logging.debug("Notifying file download in progress")
             self.__file_download_listener_executor.submit(
                 _ReaderThread.__notify_file_download_progress,
-                size,
+                self.__file_download_listener,
                 self.__original_file_name,
+                size,
                 progress,
                 kbps,
             )
 
     def __async_notify_file_download_completed(self, kbps: float):
         if self.__file_download_listener:
+            logging.debug("Notifying file download completed")
             self.__file_download_listener_executor.submit(
                 _ReaderThread.__notify_file_download_complete,
+                self.__file_download_listener,
                 self.__original_file_name,
                 self.__file_name,
                 kbps,
@@ -422,8 +423,10 @@ class _ReaderThread(threading.Thread):
 
     def __async_notify_file_download_failed(self, error: Exception):
         if self.__file_download_listener:
+            logging.debug("Notifying file download failed")
             self.__file_download_listener_executor.submit(
                 _ReaderThread.__notify_file_download_failed,
+                self.__file_download_listener,
                 self.__original_file_name,
                 error,
             )
@@ -523,10 +526,14 @@ class _ReaderThread(threading.Thread):
 
     @staticmethod
     def __notify_file_download_progress(
-        listener: FileDownloadListener, size: int, progress: float, kbps: float
+        listener: FileDownloadListener,
+        size: int,
+        original_file_name: str,
+        progress: float,
+        kbps: float,
     ) -> None:
         try:
-            listener.on_file_download_progress(progress, kbps)
+            listener.on_file_download_progress(size, original_file_name, progress, kbps)
         except Exception as e:
             logging.warning(
                 f"Error notifying file download listener: {str(e)}", exc_info=True

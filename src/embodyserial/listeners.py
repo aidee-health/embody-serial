@@ -38,7 +38,7 @@ class FileDownloadListener(ABC):
 
     @abstractmethod
     def on_file_download_progress(
-        self, original_file_name: str, progress: float, kbps: float
+        self, original_file_name: str, size: int, progress: float, kbps: float
     ) -> None:
         """Process file download progress."""
         pass
