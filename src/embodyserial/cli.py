@@ -5,11 +5,11 @@ Parse command line arguments, invoke embody device.
 import argparse
 import logging
 import sys
-import time
 
 from . import __version__
 from .embodyserial import EmbodySerial
 from .helpers import EmbodySendHelper
+from .listeners import FileDownloadListener
 
 
 get_attributes_dict: dict[str, str] = {
@@ -133,16 +133,46 @@ def __do_download_file(
     file: tuple[str, int], embody_serial: EmbodySerial, send_helper: EmbodySendHelper
 ):
     print(f"Downloading: {file[0]}")
-    start = time.time()
+
+    class _DownloadListener(FileDownloadListener):
+        def on_file_download_progress(
+            self, original_file_name: str, size: int, progress: float, kbps: float
+        ) -> None:
+            """Display progress in cli."""
+            __show_cli_progress_bar(progress, size, kbps)
+
+        def on_file_download_complete(
+            self, original_file_name: str, path: str, kbps: float
+        ) -> None:
+            """Process file download completion."""
+            print(f"{original_file_name} downloaded to {path} ({round(kbps)} kbps)")
+
+        def on_file_download_failed(
+            self, original_file_name: str, error: Exception
+        ) -> None:
+            """Process file download failure."""
+            pass
+
+    listener = _DownloadListener()
     try:
-        downloaded_file = embody_serial.download_file(file_name=file[0], size=file[1])
-        end = time.time()
-        print(
-            f"{file[0]} downloaded to {downloaded_file} ({round(file[1]/1024,2)}KB)"
-            f" @ ({round((file[1]/1024)/(end-start),2)}KB/s)"
+        embody_serial.download_file(
+            file_name=file[0], size=file[1], download_listener=listener
         )
     except Exception as e:
         print(f"Unable to download file: {e}")
+
+
+def __show_cli_progress_bar(progress: int, total: int, kbps: float):
+    bar_length = 20
+    percent = float(progress) / total
+    hashes = "#" * int(round(percent * bar_length))
+    spaces = " " * (bar_length - len(hashes))
+    sys.stdout.write(
+        "\rProgress: [{}] {}% ({} kbps)".format(
+            hashes + spaces, int(round(percent * 100)), int(round(kbps))
+        )
+    )
+    sys.stdout.flush()
 
 
 def __get_args(args):

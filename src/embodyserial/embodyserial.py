@@ -110,7 +110,13 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         if not connected:
             self.shutdown()
 
-    def download_file(self, file_name: str, size: int, timeout: int = 300) -> str:
+    def download_file(
+        self,
+        file_name: str,
+        size: int,
+        download_listener: Optional[FileDownloadListener] = None,
+        timeout: int = 300,
+    ) -> str:
         """Download file from device and write to temporary file.
 
         Raises:
@@ -120,7 +126,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         if size == 0:
             return tempfile.NamedTemporaryFile(delete=False).name
         self.send_async(codec.GetFileUart(types.File(file_name)))
-        return self.__reader.download_file(file_name, size, timeout)
+        return self.__reader.download_file(file_name, size, download_listener, timeout)
 
     @staticmethod
     def __find_serial_port() -> str:
@@ -393,10 +399,13 @@ class _ReaderThread(threading.Thread):
         finally:
             tmp.close()
 
-    def __async_notify_file_download_in_progress(self, progress: float, kbps: float):
+    def __async_notify_file_download_in_progress(
+        self, size: int, progress: float, kbps: float
+    ):
         if self.__file_download_listener:
             self.__file_download_listener_executor.submit(
                 _ReaderThread.__notify_file_download_progress,
+                size,
                 self.__original_file_name,
                 progress,
                 kbps,
@@ -514,7 +523,7 @@ class _ReaderThread(threading.Thread):
 
     @staticmethod
     def __notify_file_download_progress(
-        listener: FileDownloadListener, progress: float, kbps: float
+        listener: FileDownloadListener, size: int, progress: float, kbps: float
     ) -> None:
         try:
             listener.on_file_download_progress(progress, kbps)
