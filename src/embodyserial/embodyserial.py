@@ -279,7 +279,7 @@ class _ReaderThread(threading.Thread):
     ) -> str:
         """Set reader in file mode and read file."""
         if hasattr(self.__serial, "timeout"):
-            self.__serial.timeout = 5
+            self.__serial.timeout = 10
         self.__reset_file_mode()
         self.__file_timeout = timeout
         self.__file_size = size
