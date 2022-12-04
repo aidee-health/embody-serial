@@ -196,15 +196,7 @@ def __get_parser():
         choices=log_levels,
         default="WARNING",
     )
-    parser.add_argument(
-        "--channel",
-        help="Use serial or ble",
-        choices=["serial", "ble"],
-        default="serial",
-    )
-    parser.add_argument(
-        "--device", help="Device name (serial or ble name)", default=None
-    )
+    parser.add_argument("--device", help="Serial port name", default=None)
     parser.add_argument(
         "--get", help="Get attribute", choices=get_attributes_dict.keys(), default=None
     )
