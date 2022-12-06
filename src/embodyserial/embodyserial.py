@@ -385,7 +385,6 @@ class _ReaderThread(threading.Thread):
                         ),
                     )
                 loop_count += 1
-                time.sleep(0.001)
                 if now - start > self.__file_timeout:
                     raise TimeoutError(
                         f"Reading file took too long. Read {self.__file_size - remaining_size} bytes"
