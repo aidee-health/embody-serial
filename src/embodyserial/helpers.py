@@ -93,9 +93,7 @@ class EmbodySendHelper:
 
     def get_files(self) -> list[tuple[str, int]]:
         """Get a list of tuples with file name and file size."""
-        response = self.__sender.send(
-            msg=codec.ListFiles(), timeout=self.__send_timeout
-        )
+        response = self.__sender.send(msg=codec.ListFiles(), timeout=120)
         if not response:
             raise MissingResponseError
         if isinstance(response, codec.NackResponse):
