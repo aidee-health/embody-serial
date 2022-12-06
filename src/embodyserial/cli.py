@@ -65,6 +65,11 @@ def main(args=None):
         elif parsed_args.download_file:
             __download_file(parsed_args.download_file, embody_serial, send_helper)
             exit(0)
+        elif parsed_args.download_file_with_delay:
+            __download_file(
+                parsed_args.download_file_with_delay, embody_serial, send_helper, 0.01
+            )
+            exit(0)
         elif parsed_args.download_files:
             __download_files(embody_serial, send_helper)
             exit(0)
@@ -116,7 +121,10 @@ def __download_files(embody_serial: EmbodySerial, send_helper: EmbodySendHelper)
 
 
 def __download_file(
-    file_name: str, embody_serial: EmbodySerial, send_helper: EmbodySendHelper
+    file_name: str,
+    embody_serial: EmbodySerial,
+    send_helper: EmbodySendHelper,
+    delay: float = 0.0,
 ):
     filtered_files: list[tuple[str, int]] = [
         tup for tup in send_helper.get_files() if tup[0] == file_name
@@ -124,7 +132,7 @@ def __download_file(
     if not filtered_files or len(filtered_files) == 0:
         print(f"Unknown file name {file_name}")
         return
-    __do_download_file(filtered_files[0], embody_serial, send_helper)
+    __do_download_file(filtered_files[0], embody_serial, send_helper, delay)
 
 
 def _show_cli_progress_bar(progress: float, total: int, kbps: float):
@@ -141,7 +149,10 @@ def _show_cli_progress_bar(progress: float, total: int, kbps: float):
 
 
 def __do_download_file(
-    file: tuple[str, int], embody_serial: EmbodySerial, send_helper: EmbodySendHelper
+    file: tuple[str, int],
+    embody_serial: EmbodySerial,
+    send_helper: EmbodySendHelper,
+    delay: float = 0.0,
 ):
     print(f"Downloading: {file[0]}")
 
@@ -170,7 +181,7 @@ def __do_download_file(
 
     listener = _DownloadListener()
     embody_serial.download_file(
-        file_name=file[0], size=file[1], download_listener=listener
+        file_name=file[0], size=file[1], download_listener=listener, delay=delay
     )
 
 
@@ -206,6 +217,12 @@ def __get_parser():
     )
     parser.add_argument(
         "--download-file", help="Download specified file", type=str, default=None
+    )
+    parser.add_argument(
+        "--download-file-with-delay",
+        help="Download specified file with simulated delay",
+        type=str,
+        default=None,
     )
     parser.add_argument(
         "--download-files", help="Download all files", action="store_true", default=None

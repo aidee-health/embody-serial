@@ -116,6 +116,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         size: int,
         download_listener: Optional[FileDownloadListener] = None,
         timeout: int = 300,
+        delay: float = 0.0,
     ) -> str:
         """Download file from device and write to temporary file.
 
@@ -126,7 +127,9 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         if size == 0:
             return tempfile.NamedTemporaryFile(delete=False).name
         self.send_async(codec.GetFileUart(types.File(file_name)))
-        return self.__reader.download_file(file_name, size, download_listener, timeout)
+        return self.__reader.download_file(
+            file_name, size, download_listener, timeout, delay
+        )
 
     @staticmethod
     def __find_serial_port() -> str:
@@ -268,6 +271,7 @@ class _ReaderThread(threading.Thread):
         self.__file_error: Optional[Exception] = None
         self.__file_event = threading.Event()
         self.__file_download_listener: Optional[FileDownloadListener] = None
+        self.__file_delay = 0.0
         self.alive = True
 
     def download_file(
@@ -276,6 +280,7 @@ class _ReaderThread(threading.Thread):
         size: int,
         download_listener: Optional[FileDownloadListener] = None,
         timeout: int = 300,
+        delay=0.0,
     ) -> str:
         """Set reader in file mode and read file."""
         if hasattr(self.__serial, "timeout"):
@@ -285,12 +290,15 @@ class _ReaderThread(threading.Thread):
         self.__file_size = size
         self.__original_file_name = original_file_name
         self.__file_download_listener = download_listener
+        self.__file_delay = delay
         self.__file_mode = True
         try:
-            if not self.__file_event.wait(timeout) or not self.__file_name:
+            if not self.__file_event.wait(timeout):
                 raise MissingResponseError("No file received within timeout")
             if self.__file_error:
                 raise self.__file_error
+            if not self.__file_name:
+                raise MissingResponseError("No file received")
             return self.__file_name
         except Exception as e:
             self.__async_notify_file_download_failed(e)
@@ -306,6 +314,7 @@ class _ReaderThread(threading.Thread):
         self.__original_file_name = None
         self.__file_name = None
         self.__file_error = None
+        self.__file_delay = 0.0
         self.__file_mode = False
         self.__file_download_listener = None
 
@@ -384,6 +393,8 @@ class _ReaderThread(threading.Thread):
                     raise TimeoutError(
                         f"Reading file took too long. Read {self.__file_size - remaining_size} bytes"
                     )
+                if self.__file_delay > 0.0:
+                    time.sleep(self.__file_delay)
             raw_crc_received = self.__serial.read(2)
             end = time.time()
             self.__async_notify_file_download_in_progress(
@@ -397,7 +408,7 @@ class _ReaderThread(threading.Thread):
             (crc_received,) = struct.unpack(">H", raw_crc_received)
             if not crc_received == calculated_crc:
                 self.__file_error = CrcError(
-                    f"Invalid crc - expected {hex(crc_received)}, received {hex(calculated_crc)}"
+                    f"Invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}"
                 )
                 self.__async_notify_file_download_failed(self.__file_error)
                 return
