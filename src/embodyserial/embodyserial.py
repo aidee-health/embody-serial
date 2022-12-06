@@ -354,9 +354,10 @@ class _ReaderThread(threading.Thread):
         buffer_size = 1024
         remaining_size = self.__file_size - len(first_bytes)
         calculated_crc = crc.crc16(data=first_bytes)
-        tmp = tempfile.NamedTemporaryFile(delete=False, buffering=buffer_size)
+        tmp = tempfile.NamedTemporaryFile(delete=False)
         start = time.time()
         tmp.write(first_bytes)
+        loop_count = 0
         try:
             while remaining_size > 0 and self.__serial.is_open:
                 chunk = self.__serial.read(min(buffer_size, remaining_size))
@@ -366,13 +367,18 @@ class _ReaderThread(threading.Thread):
                 tmp.write(chunk)
                 remaining_size -= len(chunk)
                 now = time.time()
-                self.__async_notify_file_download_in_progress(
-                    self.__file_size,
-                    round(
-                        ((self.__file_size - remaining_size) / self.__file_size) * 100
-                    ),
-                    round(((self.__file_size - remaining_size) / 1024) / (now - start)),
-                )
+                if loop_count % 40 == 0:
+                    self.__async_notify_file_download_in_progress(
+                        self.__file_size,
+                        round(
+                            ((self.__file_size - remaining_size) / self.__file_size)
+                            * 100
+                        ),
+                        round(
+                            ((self.__file_size - remaining_size) / 1024) / (now - start)
+                        ),
+                    )
+                loop_count += 1
                 time.sleep(0.001)
                 if now - start > self.__file_timeout:
                     raise TimeoutError(
@@ -400,6 +406,7 @@ class _ReaderThread(threading.Thread):
                 )
             self.__file_event.set()
         finally:
+            tmp.flush()
             tmp.close()
 
     def __async_notify_file_download_in_progress(
