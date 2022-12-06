@@ -352,19 +352,25 @@ class _ReaderThread(threading.Thread):
 
     def __read_file(self, first_bytes: bytes) -> None:
         buffer_size = 1024
+        buffer_to_file = False
         remaining_size = self.__file_size - len(first_bytes)
         calculated_crc = crc.crc16(data=first_bytes)
         tmp = tempfile.NamedTemporaryFile(delete=False)
         start = time.time()
-        tmp.write(first_bytes)
+        if buffer_to_file:
+            tmp.write(first_bytes)
         loop_count = 0
+        buf = first_bytes
         try:
             while remaining_size > 0 and self.__serial.is_open:
                 chunk = self.__serial.read(min(buffer_size, remaining_size))
                 if not chunk:
                     raise MissingResponseError("File download failed")
                 calculated_crc = crc.crc16(data=chunk, existing_crc=calculated_crc)
-                tmp.write(chunk)
+                if buffer_to_file:
+                    tmp.write(chunk)
+                else:
+                    buf += chunk
                 remaining_size -= len(chunk)
                 now = time.time()
                 if loop_count % 40 == 0:
@@ -400,13 +406,15 @@ class _ReaderThread(threading.Thread):
                     f"Invalid crc - expected {hex(crc_received)}, received {hex(calculated_crc)}"
                 )
             else:
+                if not buffer_to_file:
+                    tmp.write(buf)
+                tmp.flush()
                 self.__file_name = tmp.name
                 self.__async_notify_file_download_completed(
                     round((self.__file_size / 1024) / (end - start), 2)
                 )
             self.__file_event.set()
         finally:
-            tmp.flush()
             tmp.close()
 
     def __async_notify_file_download_in_progress(
