@@ -337,7 +337,6 @@ class _ReaderThread(threading.Thread):
                     break
                 if self.__file_mode:
                     self.__read_file(raw_header)
-                    self.__reset_file_mode()
                 else:
                     self.__read_protocol_message(raw_header)
             except serial.SerialException:
@@ -351,29 +350,25 @@ class _ReaderThread(threading.Thread):
         self.__notify_connection_listeners(connected=False)
 
     def __read_file(self, first_bytes: bytes) -> None:
-        buffer_size = 1024
-        buffer_to_file = False
+        buffer_size = 2048
         remaining_size = self.__file_size - len(first_bytes)
         calculated_crc = crc.crc16(data=first_bytes)
         tmp = tempfile.NamedTemporaryFile(delete=False)
         start = time.time()
-        if buffer_to_file:
-            tmp.write(first_bytes)
+        tmp.write(first_bytes)
         loop_count = 0
-        buf = first_bytes
         try:
             while remaining_size > 0 and self.__serial.is_open:
-                chunk = self.__serial.read(min(buffer_size, remaining_size))
+                chunk = self.__serial.read(
+                    max(1, min(buffer_size, remaining_size, self.__serial.in_waiting))
+                )
                 if not chunk:
                     raise MissingResponseError("File download failed")
                 calculated_crc = crc.crc16(data=chunk, existing_crc=calculated_crc)
-                if buffer_to_file:
-                    tmp.write(chunk)
-                else:
-                    buf += chunk
+                tmp.write(chunk)
                 remaining_size -= len(chunk)
                 now = time.time()
-                if loop_count % 40 == 0:
+                if loop_count % 20 == 0:
                     self.__async_notify_file_download_in_progress(
                         self.__file_size,
                         round(
@@ -404,17 +399,19 @@ class _ReaderThread(threading.Thread):
                 self.__file_error = CrcError(
                     f"Invalid crc - expected {hex(crc_received)}, received {hex(calculated_crc)}"
                 )
-            else:
-                if not buffer_to_file:
-                    tmp.write(buf)
-                tmp.flush()
-                self.__file_name = tmp.name
-                self.__async_notify_file_download_completed(
-                    round((self.__file_size / 1024) / (end - start), 2)
-                )
-            self.__file_event.set()
+                self.__async_notify_file_download_failed(self.__file_error)
+                return
+            tmp.flush()
+            self.__file_name = tmp.name
+            self.__async_notify_file_download_completed(
+                round((self.__file_size / 1024) / (end - start), 2)
+            )
+        except Exception as e:
+            self.__file_error = e
+            self.__async_notify_file_download_failed(e)
         finally:
             tmp.close()
+            self.__file_event.set()
 
     def __async_notify_file_download_in_progress(
         self, size: int, progress: float, kbps: float

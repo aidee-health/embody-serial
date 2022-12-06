@@ -63,9 +63,7 @@ def main(args=None):
             __list_files(send_helper)
             exit(0)
         elif parsed_args.download_file:
-            return __download_file(
-                parsed_args.download_file, embody_serial, send_helper
-            )
+            __download_file(parsed_args.download_file, embody_serial, send_helper)
             exit(0)
         elif parsed_args.download_files:
             __download_files(embody_serial, send_helper)
@@ -168,7 +166,7 @@ def __do_download_file(
             self, original_file_name: str, error: Exception
         ) -> None:
             """Process file download failure."""
-            pass
+            print(f" {original_file_name} failed to download: {error}")
 
     listener = _DownloadListener()
     embody_serial.download_file(
