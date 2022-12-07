@@ -98,7 +98,12 @@ def main(args=None):
 
 def __get_all_attributes(send_helper):
     for attrib in get_attributes_dict.keys():
-        print(f"{attrib}: {getattr(send_helper, get_attributes_dict.get(attrib))()}")
+        sys.stdout.write(f"{attrib}: ")
+        sys.stdout.flush()
+        try:
+            print(getattr(send_helper, get_attributes_dict.get(attrib))())
+        except Exception as e:
+            print(f"Error: {e}")
 
 
 def __list_files(send_helper):
