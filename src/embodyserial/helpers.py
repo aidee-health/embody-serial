@@ -8,9 +8,9 @@ from embodycodec import attributes
 from embodycodec import codec
 from embodycodec import types
 
-from .embodyserial import EmbodySender
-from .exceptions import MissingResponseError
-from .exceptions import NackError
+from embodyserial.embodyserial import EmbodySender
+from embodyserial.exceptions import MissingResponseError
+from embodyserial.exceptions import NackError
 
 
 class EmbodySendHelper:
@@ -93,9 +93,7 @@ class EmbodySendHelper:
 
     def get_files(self) -> list[tuple[str, int]]:
         """Get a list of tuples with file name and file size."""
-        response = self.__sender.send(
-            msg=codec.ListFiles(), timeout=self.__send_timeout
-        )
+        response = self.__sender.send(msg=codec.ListFiles(), timeout=120)
         if not response:
             raise MissingResponseError
         if isinstance(response, codec.NackResponse):
@@ -144,31 +142,19 @@ class EmbodySendHelper:
         return True
 
     def reset_device(self) -> bool:
-        response = self.__sender.send(
+        self.__sender.send_async(
             msg=codec.ExecuteCommand(
                 command_id=codec.ExecuteCommand.RESET_DEVICE, value=b""
-            ),
-            timeout=self.__send_timeout,
+            )
         )
-        if not response:
-            raise MissingResponseError()
-        if isinstance(response, codec.NackResponse):
-            raise NackError(response)
-        assert isinstance(response, codec.ExecuteCommand)
         return True
 
     def reboot_device(self) -> bool:
-        response = self.__sender.send(
+        self.__sender.send_async(
             msg=codec.ExecuteCommand(
                 command_id=codec.ExecuteCommand.REBOOT_DEVICE, value=b""
-            ),
-            timeout=self.__send_timeout,
+            )
         )
-        if not response:
-            raise MissingResponseError()
-        if isinstance(response, codec.NackResponse):
-            raise NackError(response)
-        assert isinstance(response, codec.ExecuteCommand)
         return True
 
     def delete_all_files(self) -> bool:
