@@ -145,8 +145,7 @@ class EmbodySendHelper:
         self.__sender.send_async(
             msg=codec.ExecuteCommand(
                 command_id=codec.ExecuteCommand.RESET_DEVICE, value=b""
-            ),
-            timeout=self.__send_timeout,
+            )
         )
         return True
 
@@ -154,8 +153,7 @@ class EmbodySendHelper:
         self.__sender.send_async(
             msg=codec.ExecuteCommand(
                 command_id=codec.ExecuteCommand.REBOOT_DEVICE, value=b""
-            ),
-            timeout=self.__send_timeout,
+            )
         )
         return True
 
