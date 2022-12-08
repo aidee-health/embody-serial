@@ -6,10 +6,10 @@ import argparse
 import logging
 import sys
 
-from . import __version__
-from .embodyserial import EmbodySerial
-from .helpers import EmbodySendHelper
-from .listeners import FileDownloadListener
+from embodyserial import __version__
+from embodyserial.embodyserial import EmbodySerial
+from embodyserial.helpers import EmbodySendHelper
+from embodyserial.listeners import FileDownloadListener
 
 
 get_attributes_dict: dict[str, str] = {

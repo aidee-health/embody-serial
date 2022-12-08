@@ -8,9 +8,9 @@ from embodycodec import attributes
 from embodycodec import codec
 from embodycodec import types
 
-from .embodyserial import EmbodySender
-from .exceptions import MissingResponseError
-from .exceptions import NackError
+from embodyserial.embodyserial import EmbodySender
+from embodyserial.exceptions import MissingResponseError
+from embodyserial.exceptions import NackError
 
 
 class EmbodySendHelper:

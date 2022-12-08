@@ -24,12 +24,12 @@ from serial.serialutil import SerialBase
 from serial.serialutil import SerialException
 from serial.tools import list_ports_common
 
-from .exceptions import CrcError
-from .exceptions import MissingResponseError
-from .listeners import ConnectionListener
-from .listeners import FileDownloadListener
-from .listeners import MessageListener
-from .listeners import ResponseMessageListener
+from embodyserial.exceptions import CrcError
+from embodyserial.exceptions import MissingResponseError
+from embodyserial.listeners import ConnectionListener
+from embodyserial.listeners import FileDownloadListener
+from embodyserial.listeners import MessageListener
+from embodyserial.listeners import ResponseMessageListener
 
 
 class EmbodySender(ABC):
@@ -361,20 +361,16 @@ class _ReaderThread(threading.Thread):
     def __read_file(self, first_bytes: bytes) -> None:
         buffer_size = 2048
         remaining_size = self.__file_size - len(first_bytes)
-        calculated_crc = crc.crc16(data=first_bytes)
-        tmp = tempfile.NamedTemporaryFile(delete=False)
+        tmp: tempfile.NamedTemporaryFile = None
         start = time.time()
-        tmp.write(first_bytes)
+        in_memory_buffer = bytearray(first_bytes)
         loop_count = 0
         try:
             while remaining_size > 0 and self.__serial.is_open:
-                chunk = self.__serial.read(
-                    max(1, min(buffer_size, remaining_size, self.__serial.in_waiting))
-                )
+                chunk = self.__serial.read(min(buffer_size, remaining_size))
                 if not chunk:
                     raise MissingResponseError("File download failed")
-                calculated_crc = crc.crc16(data=chunk, existing_crc=calculated_crc)
-                tmp.write(chunk)
+                in_memory_buffer.extend(chunk)
                 remaining_size -= len(chunk)
                 now = time.time()
                 if loop_count % 20 == 0:
@@ -406,12 +402,15 @@ class _ReaderThread(threading.Thread):
                 f"Read {round(self.__file_size/1024,2)}KB in {end-start} secs - {round((self.__file_size/1024)/(end-start),2)}KB/s"
             )
             (crc_received,) = struct.unpack(">H", raw_crc_received)
+            calculated_crc = crc.crc16(data=in_memory_buffer)
             if not crc_received == calculated_crc:
                 self.__file_error = CrcError(
                     f"Invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}"
                 )
                 self.__async_notify_file_download_failed(self.__file_error)
                 return
+            tmp = tempfile.NamedTemporaryFile(delete=False)
+            tmp.write(in_memory_buffer)
             tmp.flush()
             self.__file_name = tmp.name
             self.__async_notify_file_download_completed(
@@ -421,7 +420,8 @@ class _ReaderThread(threading.Thread):
             self.__file_error = e
             self.__async_notify_file_download_failed(e)
         finally:
-            tmp.close()
+            if tmp:
+                tmp.close()
             self.__file_event.set()
 
     def __async_notify_file_download_in_progress(
