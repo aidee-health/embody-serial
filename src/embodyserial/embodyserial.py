@@ -13,6 +13,7 @@ from abc import ABC
 from abc import abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError
+from dataclasses import dataclass
 from typing import Optional
 
 import serial
@@ -234,6 +235,17 @@ class _MessageSender(ResponseMessageListener):
             return None
 
 
+@dataclass
+class _FileDownload:
+    file_size: int = -1
+    file_timeout: int = None
+    original_file_name: Optional[str] = None
+    file_name: Optional[str] = None
+    file_error: Optional[Exception] = None
+    file_download_listener: Optional[FileDownloadListener] = None
+    file_delay: float = 0.0
+
+
 class _ReaderThread(threading.Thread):
     """Implement a serial port read loop and dispatch incoming messages to subscribers/listeners.
 
@@ -264,14 +276,8 @@ class _ReaderThread(threading.Thread):
         self.__response_message_listeners: list[ResponseMessageListener] = []
         self.__connection_listeners: list[ConnectionListener] = []
         self.__file_mode = False
-        self.__file_size = -1
-        self.__file_timeout = 0
-        self.__original_file_name: Optional[str] = None
-        self.__file_name: Optional[str] = None
-        self.__file_error: Optional[Exception] = None
+        self.__f: _FileDownload = None
         self.__file_event = threading.Event()
-        self.__file_download_listener: Optional[FileDownloadListener] = None
-        self.__file_delay = 0.0
         self.alive = True
 
     def download_file(
@@ -286,20 +292,22 @@ class _ReaderThread(threading.Thread):
         if hasattr(self.__serial, "timeout"):
             self.__serial.timeout = 10
         self.__reset_file_mode()
-        self.__file_timeout = timeout
-        self.__file_size = size
-        self.__original_file_name = original_file_name
-        self.__file_download_listener = download_listener
-        self.__file_delay = delay
+        self.__f = _FileDownload(
+            file_size=size,
+            file_timeout=timeout,
+            original_file_name=original_file_name,
+            file_download_listener=download_listener,
+            file_delay=delay,
+        )
         self.__file_mode = True
         try:
             if not self.__file_event.wait(timeout):
                 raise MissingResponseError("No file received within timeout")
-            if self.__file_error:
-                raise self.__file_error
-            if not self.__file_name:
+            if self.__f.file_error:
+                raise self.__f.file_error
+            if not self.__f.file_name:
                 raise MissingResponseError("No file received")
-            return self.__file_name
+            return self.__f.file_name
         except Exception as e:
             self.__async_notify_file_download_failed(e)
             raise e
@@ -310,13 +318,8 @@ class _ReaderThread(threading.Thread):
 
     def __reset_file_mode(self) -> None:
         self.__file_event.clear()
-        self.__file_size = -1
-        self.__original_file_name = None
-        self.__file_name = None
-        self.__file_error = None
-        self.__file_delay = 0.0
         self.__file_mode = False
-        self.__file_download_listener = None
+        self.__f = None
 
     def stop(self) -> None:
         """Stop the reader thread"""
@@ -360,7 +363,7 @@ class _ReaderThread(threading.Thread):
 
     def __read_file(self, first_bytes: bytes) -> None:
         buffer_size = 2048
-        remaining_size = self.__file_size - len(first_bytes)
+        remaining_size = self.__f.file_size - len(first_bytes)
         tmp: tempfile.NamedTemporaryFile = None
         start = time.time()
         in_memory_buffer = bytearray(first_bytes)
@@ -375,76 +378,65 @@ class _ReaderThread(threading.Thread):
                 now = time.time()
                 if loop_count % 20 == 0:
                     self.__async_notify_file_download_in_progress(
-                        self.__file_size,
+                        self.__f.file_size,
                         round(
-                            ((self.__file_size - remaining_size) / self.__file_size)
+                            ((self.__f.file_size - remaining_size) / self.__f.file_size)
                             * 100
                         ),
                         round(
-                            ((self.__file_size - remaining_size) / 1024) / (now - start)
+                            ((self.__f.file_size - remaining_size) / 1024)
+                            / (now - start)
                         ),
                     )
                 loop_count += 1
-                if now - start > self.__file_timeout:
+                if now - start > self.__f.file_timeout:
                     raise TimeoutError(
-                        f"Reading file took too long. Read {self.__file_size - remaining_size} bytes"
+                        f"Reading file took too long. Read {self.__f.file_size - remaining_size} bytes"
                     )
-                if self.__file_delay > 0.0:
-                    time.sleep(self.__file_delay)
+                if self.__f.file_delay:
+                    time.sleep(self.__f.file_delay)
             raw_crc_received = self.__serial.read(2)
             end = time.time()
             self.__async_notify_file_download_in_progress(
-                self.__file_size,
+                self.__f.file_size,
                 100,
-                round((self.__file_size / 1024) / (end - start), 2),
+                round((self.__f.file_size / 1024) / (end - start), 2),
             )
             logging.debug(
-                f"Read {round(self.__file_size/1024,2)}KB in {end-start} secs - {round((self.__file_size/1024)/(end-start),2)}KB/s"
+                f"Read {round(self.__f.file_size/1024,2)}KB in {end-start} secs "
+                f"- {round((self.__f.file_size/1024)/(end-start),2)}KB/s"
             )
             (crc_received,) = struct.unpack(">H", raw_crc_received)
-            logging.debug(f"CRC read: {hex(crc_received)}. Calculating for buffer...")
             calculated_crc = crc.crc16(data=in_memory_buffer)
             if not crc_received == calculated_crc:
-                self.__file_error = CrcError(
+                self.__f.file_error = CrcError(
                     f"Invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}"
                 )
-                self.__async_notify_file_download_failed(self.__file_error)
+                self.__async_notify_file_download_failed(self.__f.file_error)
                 return
-            logging.debug(f"CRC OK: {hex(crc_received)}")
             tmp = tempfile.NamedTemporaryFile(delete=False)
             tmp.write(in_memory_buffer)
             tmp.flush()
-            self.__file_name = tmp.name
+            self.__f.file_name = tmp.name
             self.__async_notify_file_download_completed(
-                round((self.__file_size / 1024) / (end - start), 2)
+                round((self.__f.file_size / 1024) / (end - start), 2)
             )
         except Exception as e:
-            self.__file_error = e
+            self.__f.file_error = e
             self.__async_notify_file_download_failed(e)
         finally:
             if tmp:
                 tmp.close()
             self.__file_event.set()
 
-    def __calculate_crc_ccitt(self, data: bytearray) -> int:
-        crc = 0xFFFF
-        for b in data:
-            crc = crc ^ (b << 8)
-            for _ in range(8):
-                if crc & 0x8000:
-                    crc = (crc << 1) ^ 0x1021
-                else:
-                    crc = crc << 1
-        return crc & 0xFFFF
-
     def __async_notify_file_download_in_progress(
         self, size: int, progress: float, kbps: float
     ):
-        if self.__file_download_listener and self.__original_file_name:
+        if self.__f and self.__f.file_download_listener and self.__f.original_file_name:
             self.__file_download_listener_executor.submit(
                 _ReaderThread.__notify_file_download_progress,
-                self.__file_download_listener,
-                self.__original_file_name,
+                self.__f.file_download_listener,
+                self.__f.original_file_name,
                 size,
                 progress,
                 kbps,
@@ -452,24 +444,25 @@ class _ReaderThread(threading.Thread):
 
     def __async_notify_file_download_completed(self, kbps: float):
         if (
-            self.__file_download_listener
-            and self.__original_file_name
-            and self.__file_name
+            self.__f
+            and self.__f.file_download_listener
+            and self.__f.original_file_name
+            and self.__f.file_name
         ):
             self.__file_download_listener_executor.submit(
                 _ReaderThread.__notify_file_download_complete,
-                self.__file_download_listener,
-                self.__original_file_name,
-                self.__file_name,
+                self.__f.file_download_listener,
+                self.__f.original_file_name,
+                self.__f.file_name,
                 kbps,
             )
 
     def __async_notify_file_download_failed(self, error: Exception):
-        if self.__file_download_listener and self.__original_file_name:
+        if self.__f and self.__f.file_download_listener and self.__f.original_file_name:
             self.__file_download_listener_executor.submit(
                 _ReaderThread.__notify_file_download_failed,
-                self.__file_download_listener,
-                self.__original_file_name,
+                self.__f.file_download_listener,
+                self.__f.original_file_name,
                 error,
             )
 
