@@ -402,6 +402,7 @@ class _ReaderThread(threading.Thread):
                 f"Read {round(self.__file_size/1024,2)}KB in {end-start} secs - {round((self.__file_size/1024)/(end-start),2)}KB/s"
             )
             (crc_received,) = struct.unpack(">H", raw_crc_received)
+            logging.debug(f"CRC read: {hex(crc_received)}. Calculating for buffer...")
             calculated_crc = crc.crc16(data=in_memory_buffer)
             if not crc_received == calculated_crc:
                 self.__file_error = CrcError(
@@ -409,6 +410,7 @@ class _ReaderThread(threading.Thread):
                 )
                 self.__async_notify_file_download_failed(self.__file_error)
                 return
+            logging.debug(f"CRC OK: {hex(crc_received)}")
             tmp = tempfile.NamedTemporaryFile(delete=False)
             tmp.write(in_memory_buffer)
             tmp.flush()
@@ -423,6 +425,17 @@ class _ReaderThread(threading.Thread):
             if tmp:
                 tmp.close()
             self.__file_event.set()
+
+    def __calculate_crc_ccitt(self, data: bytearray) -> int:
+        crc = 0xFFFF
+        for b in data:
+            crc = crc ^ (b << 8)
+            for _ in range(8):
+                if crc & 0x8000:
+                    crc = (crc << 1) ^ 0x1021
+                else:
+                    crc = crc << 1
+        return crc & 0xFFFF
 
     def __async_notify_file_download_in_progress(
         self, size: int, progress: float, kbps: float
