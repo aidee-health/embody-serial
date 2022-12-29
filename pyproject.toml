@@ -18,7 +18,7 @@ classifiers = [
 Changelog = "https://github.com/aidee-health/embody-serial/releases"
 
 [tool.poetry.dependencies]
-python = ">=3.8,<=3.11"
+python = ">=3.8,<4.0"
 embody-codec = ">=1.0.12"
 pyserial = "^3.5"
 
