@@ -6,6 +6,7 @@ and subscribing for incoming messages from the device.
 import concurrent.futures
 import logging
 import struct
+import sys
 import tempfile
 import threading
 import time
@@ -147,6 +148,8 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             elif port.manufacturer and any(
                 manufacturer in port.manufacturer for manufacturer in manufacturers
             ):
+                candidate = port
+            elif sys.platform == "win32":
                 candidate = port
             if candidate and EmbodySerial.__port_is_alive(port):
                 return port.device
