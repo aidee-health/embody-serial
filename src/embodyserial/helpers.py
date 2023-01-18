@@ -91,6 +91,12 @@ class EmbodySendHelper:
         assert response
         return response
 
+    def get_on_body_state(self) -> bool:
+        response_attribute = self.__do_send_get_attribute_request(
+            attributes.BeltOnBodyStateAttribute.attribute_id
+        )
+        return response_attribute.value
+
     def get_files(self) -> list[tuple[str, int]]:
         """Get a list of tuples with file name and file size."""
         response = self.__sender.send(msg=codec.ListFiles(), timeout=120)

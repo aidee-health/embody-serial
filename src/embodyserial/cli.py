@@ -23,6 +23,7 @@ get_attributes_dict: dict[str, str] = {
     "chargestate": "get_charge_state",
     "temperature": "get_temperature",
     "firmware": "get_firmware_version",
+    "on_body_state": "get_on_body_state",
 }
 
 
