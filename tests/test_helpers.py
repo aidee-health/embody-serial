@@ -33,7 +33,7 @@ def test_get_current_time_with_exception() -> None:
     sender: helpers.EmbodySender = Mock()
     sender.send = Mock(side_effect=SerialException)  # type: ignore
     send_helper = helpers.EmbodySendHelper(sender=sender)
-    with pytest.raises(Exception):
+    with pytest.raises(SerialException):
         send_helper.get_current_time()
 
 
