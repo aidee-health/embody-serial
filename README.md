@@ -125,6 +125,20 @@ please [file an issue] along with a detailed description.
 [file an issue]: https://github.com/aidee-health/embody-serial/issues
 [pip]: https://pip.pypa.io/
 
+## Troubleshooting
+
+### I get an error message saying 'no module named serial' or similar
+
+This is a known issue and is usually caused by one of two things.
+
+#### Ensure you haven't installed `serial` or `jserial`
+
+Embody-serial uses the `pyserial` library. Run `pip list` to see if either the `serial` or `jserial` library is installed. If they are, remove them with `pip uninstall serial`.
+
+#### Problems with pyserial
+
+Sometimes, for whatever reason, it is necessary to re-install pyserial. Perform a `pip uninstall pyserial` and then `pip install pyserial` to see if this helps.
+
 <!-- github-only -->
 
 [license]: https://github.com/aidee-health/embody-serial/blob/main/LICENSE
