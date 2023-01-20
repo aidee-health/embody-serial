@@ -398,14 +398,14 @@ pipenv = ["pipenv"]
 
 [[package]]
 name = "embody-codec"
-version = "1.0.15"
-description = "Embody Protocol Codec"
+version = "1.0.17"
+description = "Embody Codec"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "embody_codec-1.0.15-py3-none-any.whl", hash = "sha256:ed1baef67abee8e8e64f73eeb19ce12b61e57d3285e2754ef6a6ab3d7ccf38a3"},
-    {file = "embody_codec-1.0.15.tar.gz", hash = "sha256:f863bc495cc86a2e45a74423fbf51436b9a9de935d3537efedf06672b450eb93"},
+    {file = "embody_codec-1.0.17-py3-none-any.whl", hash = "sha256:1a76679999901096f11183081dcfc24eec7dd32017cc819b1a2d12617c4ccfe5"},
+    {file = "embody_codec-1.0.17.tar.gz", hash = "sha256:4cfff295a3b195fc807b36e790d30ed170a9aa20bb5937c505b8bd7cedb607de"},
 ]
 
 [[package]]
@@ -1314,14 +1314,14 @@ gitlab = ["python-gitlab (>=1.3.0)"]
 
 [[package]]
 name = "setuptools"
-version = "66.0.0"
+version = "66.1.0"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "setuptools-66.0.0-py3-none-any.whl", hash = "sha256:a78d01d1e2c175c474884671dde039962c9d74c7223db7369771fcf6e29ceeab"},
-    {file = "setuptools-66.0.0.tar.gz", hash = "sha256:bd6eb2d6722568de6d14b87c44a96fac54b2a45ff5e940e639979a3d1792adb6"},
+    {file = "setuptools-66.1.0-py3-none-any.whl", hash = "sha256:fc19f9f62120a763300fd78e234b3cbd3417be098f08c156eaaf36420627e57b"},
+    {file = "setuptools-66.1.0.tar.gz", hash = "sha256:78a02bdea8a5cb66dec1c507598c443bcc75562817d2556c1a17f7a344615bb4"},
 ]
 
 [package.extras]
