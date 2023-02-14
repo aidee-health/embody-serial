@@ -394,7 +394,7 @@ class _ReaderThread(threading.Thread):
                     raise TimeoutError(
                         f"Reading file took too long. Read {f.file_size - remaining_size} bytes"
                     )
-                if f.file_delay:
+                if f.file_delay > 0:
                     time.sleep(f.file_delay)
             raw_crc_received = self.__serial.read(2)
             end = time.time()
