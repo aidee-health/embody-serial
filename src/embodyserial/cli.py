@@ -110,7 +110,7 @@ def __get_all_attributes(send_helper):
 def __list_files(send_helper):
     files = send_helper.get_files()
     if len(files) > 0:
-        for name, size in send_helper.get_files():
+        for name, size in files:
             print(f"{name} ({round(size/1024)}KB)")
     else:
         print("[]")
