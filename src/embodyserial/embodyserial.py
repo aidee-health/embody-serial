@@ -369,15 +369,18 @@ class _ReaderThread(threading.Thread):
         buffer_size = 2048
         remaining_size = f.file_size - len(first_bytes)
         start = time.time()
-        in_memory_buffer = bytearray(first_bytes)
+        in_memory_buffer = bytearray(f.file_size)
+        in_memory_buffer[0 : len(first_bytes)] = first_bytes
         loop_count = 0
         try:
             while remaining_size > 0 and self.__serial.is_open:
                 chunk = self.__serial.read(min(buffer_size, remaining_size))
                 if not chunk:
                     raise MissingResponseError("File download failed")
-                in_memory_buffer.extend(chunk)
-                remaining_size -= len(chunk)
+                curr_pos = f.file_size - remaining_size
+                curr_len = len(chunk)
+                in_memory_buffer[curr_pos : curr_pos + curr_len] = chunk
+                remaining_size -= curr_len
                 now = time.time()
                 if loop_count % 20 == 0:
                     self.__async_notify_file_download_in_progress(
@@ -391,7 +394,7 @@ class _ReaderThread(threading.Thread):
                     raise TimeoutError(
                         f"Reading file took too long. Read {f.file_size - remaining_size} bytes"
                     )
-                if f.file_delay:
+                if f.file_delay > 0:
                     time.sleep(f.file_delay)
             raw_crc_received = self.__serial.read(2)
             end = time.time()
@@ -588,26 +591,3 @@ class _ReaderThread(threading.Thread):
             logging.warning(
                 f"Error notifying file download listener: {str(e)}", exc_info=True
             )
-
-
-if __name__ == "__main__":
-    """Main method for demo and testing"""
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s [%(thread)d/%(threadName)s] %(message)s",
-    )
-
-    class DemoMessageListener(MessageListener, ResponseMessageListener):
-        """Implement listener callback methods"""
-
-        def message_received(self, msg: codec.Message):
-            logging.info(f"Message received: {msg}")
-
-        def response_message_received(self, msg: codec.Message):
-            logging.info(f"Response message received: {msg}")
-
-    logging.info("Setting up communicator")
-    communicator = EmbodySerial(msg_listener=DemoMessageListener())
-    response = communicator.send(codec.ListFiles())
-    logging.info(f"Response received directly: {response}")
-    communicator.shutdown()
