@@ -591,26 +591,3 @@ class _ReaderThread(threading.Thread):
             logging.warning(
                 f"Error notifying file download listener: {str(e)}", exc_info=True
             )
-
-
-if __name__ == "__main__":
-    """Main method for demo and testing"""
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s [%(thread)d/%(threadName)s] %(message)s",
-    )
-
-    class DemoMessageListener(MessageListener, ResponseMessageListener):
-        """Implement listener callback methods"""
-
-        def message_received(self, msg: codec.Message):
-            logging.info(f"Message received: {msg}")
-
-        def response_message_received(self, msg: codec.Message):
-            logging.info(f"Response message received: {msg}")
-
-    logging.info("Setting up communicator")
-    communicator = EmbodySerial(msg_listener=DemoMessageListener())
-    response = communicator.send(codec.ListFiles())
-    logging.info(f"Response received directly: {response}")
-    communicator.shutdown()
