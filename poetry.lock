@@ -398,14 +398,14 @@ pipenv = ["pipenv"]
 
 [[package]]
 name = "embody-codec"
-version = "1.0.17"
+version = "1.0.18"
 description = "Embody Codec"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "embody_codec-1.0.17-py3-none-any.whl", hash = "sha256:1a76679999901096f11183081dcfc24eec7dd32017cc819b1a2d12617c4ccfe5"},
-    {file = "embody_codec-1.0.17.tar.gz", hash = "sha256:4cfff295a3b195fc807b36e790d30ed170a9aa20bb5937c505b8bd7cedb607de"},
+    {file = "embody_codec-1.0.18-py3-none-any.whl", hash = "sha256:56f206d05bbef5db5e990a45d7bb2d8cc32d2e441e5919d0d94f0f1178226aa2"},
+    {file = "embody_codec-1.0.18.tar.gz", hash = "sha256:a26a778e737f8c24e0c19f14843027eb6e8c077ce8aa76f45b9a1f6e64eeb2a2"},
 ]
 
 [[package]]
