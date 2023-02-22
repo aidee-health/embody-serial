@@ -359,6 +359,9 @@ class _ReaderThread(threading.Thread):
                 # probably some I/O problem such as disconnected USB serial adapters -> exit
                 logging.info("Serial port is closed (SerialException)")
                 break
+            except TypeError:
+                # read returned empty buffer
+                break
             except OSError:
                 logging.info("OS Error reading from socket (OSError)")
                 break
