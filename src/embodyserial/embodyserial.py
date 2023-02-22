@@ -10,6 +10,7 @@ import sys
 import tempfile
 import threading
 import time
+import re
 from abc import ABC
 from abc import abstractmethod
 from concurrent.futures import ThreadPoolExecutor
@@ -136,23 +137,19 @@ class EmbodySerial(ConnectionListener, EmbodySender):
     @staticmethod
     def __find_serial_port() -> str:
         """Find first matching serial port name."""
-        manufacturers = ["Datek", "Aidee"]
-        descriptions = ["IsenseU", "G3", "EmBody"]
         all_available_ports = serial.tools.list_ports.comports()
-        if len(all_available_ports) == 0:
+        if not all_available_ports:
             raise SerialException("No available serial ports")
-        for port in all_available_ports:
-            candidate: Optional[list_ports_common.ListPortInfo] = None
-            if any(description in port.description for description in descriptions):
-                candidate = port
-            elif port.manufacturer and any(
-                manufacturer in port.manufacturer for manufacturer in manufacturers
-            ):
-                candidate = port
-            elif sys.platform == "win32":
-                candidate = port
 
-            if candidate and EmbodySerial.__port_is_alive(port):
+        for port in all_available_ports:
+            if (
+                not re.search("Datek|Aidee", str(port.manufacturer))
+                and not re.search("IsenseU|G3|EmBody", str(port.description))
+                and sys.platform != "win32"
+            ):
+                continue
+
+            if EmbodySerial.__port_is_alive(port):
                 return port.device
         raise SerialException("No matching serial ports found")
 
