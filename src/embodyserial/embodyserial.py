@@ -151,6 +151,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
                 candidate = port
             elif sys.platform == "win32":
                 candidate = port
+
             if candidate and EmbodySerial.__port_is_alive(port):
                 return port.device
         raise SerialException("No matching serial ports found")
