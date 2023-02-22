@@ -42,7 +42,12 @@ def main(args=None):
         level=getattr(logging, parsed_args.log_level.upper(), logging.INFO),
         format="%(asctime)s:%(levelname)s:%(message)s",
     )
-    embody_serial = EmbodySerial(serial_port=parsed_args.device)
+    try:
+        embody_serial = EmbodySerial(serial_port=parsed_args.device)
+    except Exception as e:
+        print(f"Connection error: {e}")
+        exit(-1)
+
     send_helper = EmbodySendHelper(sender=embody_serial)
     try:
         if parsed_args.get:
