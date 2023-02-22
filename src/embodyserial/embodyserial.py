@@ -11,6 +11,7 @@ import tempfile
 import threading
 import time
 import re
+from operator import attrgetter
 from abc import ABC
 from abc import abstractmethod
 from concurrent.futures import ThreadPoolExecutor
@@ -141,6 +142,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         if not all_available_ports:
             raise SerialException("No available serial ports")
 
+        all_available_ports.sort(key=attrgetter("device"))
         for port in all_available_ports:
             if (
                 not re.search("Datek|Aidee", str(port.manufacturer))
