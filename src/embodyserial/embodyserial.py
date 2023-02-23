@@ -5,18 +5,18 @@ and subscribing for incoming messages from the device.
 """
 import concurrent.futures
 import logging
+import re
 import struct
 import sys
 import tempfile
 import threading
 import time
-import re
-from operator import attrgetter
 from abc import ABC
 from abc import abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError
 from dataclasses import dataclass
+from operator import attrgetter
 from typing import Optional
 
 import serial
@@ -26,7 +26,6 @@ from embodycodec import crc
 from embodycodec import types
 from serial.serialutil import SerialBase
 from serial.serialutil import SerialException
-from serial.tools import list_ports_common
 
 from embodyserial.exceptions import CrcError
 from embodyserial.exceptions import MissingResponseError
