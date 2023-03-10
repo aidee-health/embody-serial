@@ -296,7 +296,6 @@ class _ReaderThread(threading.Thread):
         """Set reader in file mode and read file."""
         if hasattr(self.__serial, "timeout"):
             self.__serial.timeout = 10
-        self.__reset_file_mode()
         f = _FileDownload(
             file_size=size,
             file_timeout=timeout,
@@ -470,6 +469,8 @@ class _ReaderThread(threading.Thread):
         logging.debug(f"RECEIVE: Received header {raw_header.hex()}")
         msg_type, length = struct.unpack(">BH", raw_header)
         logging.debug(f"RECEIVE: Received msg type: {msg_type}, length: {length}")
+        if length > 20480:
+            raise ValueError(f"Message length too long: {length}")
         remaining_length = length - 3
         raw_message = raw_header
         while remaining_length > 0:
