@@ -201,7 +201,7 @@ class _MessageSender(ResponseMessageListener):
         self.__response_event.set()
 
     def send_message(self, msg: codec.Message) -> None:
-        self.__send_async(msg, False)
+        self.__send_async(msg)
 
     def send_message_and_wait_for_response(
         self, msg: codec.Message, timeout: Optional[int] = 30
