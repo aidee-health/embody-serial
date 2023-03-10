@@ -364,6 +364,9 @@ class _ReaderThread(threading.Thread):
             except ValueError:
                 logging.info("ValueError reading from socket (Probably disconnected)")
                 break
+            except Exception as e:
+                logging.info(f"Exception reading from socket: {str(e)} - disconnecting")
+                break
         self.alive = False
         self.__notify_connection_listeners(connected=False)
 
@@ -376,7 +379,10 @@ class _ReaderThread(threading.Thread):
         loop_count = 0
         try:
             while remaining_size > 0 and self.__serial.is_open:
-                chunk = self.__serial.read(min(buffer_size, remaining_size))
+                bytes_to_read: Optional[int] = self.__serial.in_waiting
+                if not bytes_to_read or bytes_to_read <= 0:
+                    bytes_to_read = buffer_size
+                chunk = self.__serial.read(min(bytes_to_read, remaining_size))
                 if not chunk:
                     raise MissingResponseError("File download failed")
                 curr_pos = f.file_size - remaining_size
