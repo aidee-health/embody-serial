@@ -187,7 +187,7 @@ class _MessageSender(ResponseMessageListener):
         )
 
     def shutdown(self) -> None:
-        self.__send_executor.shutdown(wait=False, cancel_futures=False)
+        self.__send_executor.shutdown(wait=True, cancel_futures=False)
 
     def response_message_received(self, msg: codec.Message) -> None:
         """Invoked when response message is received by Message reader.
@@ -332,13 +332,11 @@ class _ReaderThread(threading.Thread):
         self.alive = False
         if hasattr(self.__serial, "cancel_read"):
             self.__serial.cancel_read()
-        self.__message_listener_executor.shutdown(wait=False, cancel_futures=False)
+        self.__message_listener_executor.shutdown(wait=True, cancel_futures=False)
         self.__response_message_listener_executor.shutdown(
-            wait=False, cancel_futures=False
+            wait=True, cancel_futures=False
         )
-        self.__file_download_listener_executor.shutdown(
-            wait=False, cancel_futures=False
-        )
+        self.__file_download_listener_executor.shutdown(wait=True, cancel_futures=False)
         self.join(2)
 
     def run(self) -> None:
