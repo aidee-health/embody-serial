@@ -362,6 +362,9 @@ class _ReaderThread(threading.Thread):
             except OSError:
                 logging.info("OS Error reading from socket (OSError)")
                 break
+            except ValueError:
+                logging.info("ValueError reading from socket (Probably disconnected)")
+                break
         self.alive = False
         self.__notify_connection_listeners(connected=False)
 
