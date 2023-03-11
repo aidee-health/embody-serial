@@ -122,6 +122,9 @@ class EmbodySerial(ConnectionListener, EmbodySender):
     ) -> str:
         """Download file from device and write to temporary file.
 
+        Note! Do not try to send messages to the device during file download, as this will
+        cause the download to fail.
+
         Raises:
           MissingResponseError if no response.
           CrcError if invalid crc.
@@ -130,10 +133,9 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             return tempfile.NamedTemporaryFile(delete=False).name
         self.send_async(codec.GetFileUart(types.File(file_name)))
         # lock send to prevent sending other messages while downloading
-        with self.__sender._send_lock:
-            return self.__reader.download_file(
-                file_name, size, download_listener, timeout, delay
-            )
+        return self.__reader.download_file(
+            file_name, size, download_listener, timeout, delay
+        )
 
     @staticmethod
     def __find_serial_port() -> str:
