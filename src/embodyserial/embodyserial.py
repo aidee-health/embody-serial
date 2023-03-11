@@ -5,6 +5,7 @@ and subscribing for incoming messages from the device.
 """
 import concurrent.futures
 import logging
+import re
 import struct
 import sys
 import tempfile
@@ -15,6 +16,7 @@ from abc import abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError
 from dataclasses import dataclass
+from operator import attrgetter
 from typing import Optional
 
 import serial
@@ -24,7 +26,6 @@ from embodycodec import crc
 from embodycodec import types
 from serial.serialutil import SerialBase
 from serial.serialutil import SerialException
-from serial.tools import list_ports_common
 
 from embodyserial.exceptions import CrcError
 from embodyserial.exceptions import MissingResponseError
@@ -136,22 +137,20 @@ class EmbodySerial(ConnectionListener, EmbodySender):
     @staticmethod
     def __find_serial_port() -> str:
         """Find first matching serial port name."""
-        manufacturers = ["Datek", "Aidee"]
-        descriptions = ["IsenseU", "G3", "EmBody"]
         all_available_ports = serial.tools.list_ports.comports()
-        if len(all_available_ports) == 0:
+        if not all_available_ports:
             raise SerialException("No available serial ports")
+
+        all_available_ports.sort(key=attrgetter("device"))
         for port in all_available_ports:
-            candidate: Optional[list_ports_common.ListPortInfo] = None
-            if any(description in port.description for description in descriptions):
-                candidate = port
-            elif port.manufacturer and any(
-                manufacturer in port.manufacturer for manufacturer in manufacturers
+            if (
+                not re.search("Datek|Aidee", str(port.manufacturer))
+                and not re.search("IsenseU|G3|EmBody", str(port.description))
+                and sys.platform != "win32"
             ):
-                candidate = port
-            elif sys.platform == "win32":
-                candidate = port
-            if candidate and EmbodySerial.__port_is_alive(port):
+                continue
+
+            if EmbodySerial.__port_is_alive(port):
                 return port.device
         raise SerialException("No matching serial ports found")
 
@@ -358,6 +357,9 @@ class _ReaderThread(threading.Thread):
             except serial.SerialException:
                 # probably some I/O problem such as disconnected USB serial adapters -> exit
                 logging.info("Serial port is closed (SerialException)")
+                break
+            except TypeError:
+                # read returned empty buffer
                 break
             except OSError:
                 logging.info("OS Error reading from socket (OSError)")
