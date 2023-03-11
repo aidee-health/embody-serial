@@ -122,9 +122,6 @@ class EmbodySerial(ConnectionListener, EmbodySender):
     ) -> str:
         """Download file from device and write to temporary file.
 
-        Note! Do not try to send messages to the device during file download, as this will
-        cause the download to fail.
-
         Raises:
           MissingResponseError if no response.
           CrcError if invalid crc.
