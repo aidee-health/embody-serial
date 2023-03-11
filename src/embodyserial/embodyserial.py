@@ -131,11 +131,12 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         """
         if size == 0:
             return tempfile.NamedTemporaryFile(delete=False).name
-        self.send_async(codec.GetFileUart(types.File(file_name)))
+        self.send(codec.GetFileUart(types.File(file_name)), timeout=0)
         # lock send to prevent sending other messages while downloading
-        return self.__reader.download_file(
-            file_name, size, download_listener, timeout, delay
-        )
+        with self.__sender._send_lock:
+            return self.__reader.download_file(
+                file_name, size, download_listener, timeout, delay
+            )
 
     @staticmethod
     def __find_serial_port() -> str:
@@ -210,7 +211,7 @@ class _MessageSender(ResponseMessageListener):
     ) -> Optional[codec.Message]:
         future = self.__send_async(msg, timeout)
         try:
-            return future.result(timeout)
+            return future.result(timeout + 1 if timeout else 1)
         except TimeoutError:
             logging.warning(
                 f"No response received for message within timeout: {msg}",
@@ -236,7 +237,7 @@ class _MessageSender(ResponseMessageListener):
             except serial.SerialException as e:
                 logging.warning(f"Error sending message: {str(e)}", exc_info=False)
                 return None
-            if wait_for_response_secs:
+            if wait_for_response_secs and wait_for_response_secs > 0:
                 if self.__response_event.wait(wait_for_response_secs):
                     return self.__current_response_message
             return None
