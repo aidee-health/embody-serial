@@ -129,10 +129,12 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         """
         if size == 0:
             return tempfile.NamedTemporaryFile(delete=False).name
-        self.send_async(codec.GetFileUart(types.File(file_name)))
-        return self.__reader.download_file(
-            file_name, size, download_listener, timeout, delay
-        )
+        self.send(codec.GetFileUart(types.File(file_name)), timeout=0)
+        # lock send to prevent sending other messages while downloading
+        with self.__sender._send_lock:
+            return self.__reader.download_file(
+                file_name, size, download_listener, timeout, delay
+            )
 
     @staticmethod
     def __find_serial_port() -> str:
@@ -178,7 +180,7 @@ class _MessageSender(ResponseMessageListener):
 
     def __init__(self, serial_instance: SerialBase) -> None:
         self.__serial = serial_instance
-        self.__send_lock = threading.Lock()
+        self._send_lock = threading.Lock()
         self.__response_event = threading.Event()
         self.__current_response_message: Optional[codec.Message] = None
         self.__send_executor = ThreadPoolExecutor(
@@ -186,7 +188,7 @@ class _MessageSender(ResponseMessageListener):
         )
 
     def shutdown(self) -> None:
-        self.__send_executor.shutdown(wait=False, cancel_futures=False)
+        self.__send_executor.shutdown(wait=True, cancel_futures=False)
 
     def response_message_received(self, msg: codec.Message) -> None:
         """Invoked when response message is received by Message reader.
@@ -198,14 +200,14 @@ class _MessageSender(ResponseMessageListener):
         self.__response_event.set()
 
     def send_message(self, msg: codec.Message) -> None:
-        self.__send_async(msg, False)
+        self.__send_async(msg)
 
     def send_message_and_wait_for_response(
         self, msg: codec.Message, timeout: Optional[int] = 30
     ) -> Optional[codec.Message]:
         future = self.__send_async(msg, timeout)
         try:
-            return future.result(timeout)
+            return future.result(timeout + 1 if timeout else 1)
         except TimeoutError:
             logging.warning(
                 f"No response received for message within timeout: {msg}",
@@ -221,7 +223,7 @@ class _MessageSender(ResponseMessageListener):
     def __do_send(
         self, msg: codec.Message, wait_for_response_secs: Optional[int] = None
     ) -> Optional[codec.Message]:
-        with self.__send_lock:
+        with self._send_lock:
             if not self.__serial.is_open:
                 return None
             logging.debug(f"Sending message: {msg}, encoded: {msg.encode().hex()}")
@@ -231,7 +233,7 @@ class _MessageSender(ResponseMessageListener):
             except serial.SerialException as e:
                 logging.warning(f"Error sending message: {str(e)}", exc_info=False)
                 return None
-            if wait_for_response_secs:
+            if wait_for_response_secs and wait_for_response_secs > 0:
                 if self.__response_event.wait(wait_for_response_secs):
                     return self.__current_response_message
             return None
@@ -293,7 +295,6 @@ class _ReaderThread(threading.Thread):
         """Set reader in file mode and read file."""
         if hasattr(self.__serial, "timeout"):
             self.__serial.timeout = 10
-        self.__reset_file_mode()
         f = _FileDownload(
             file_size=size,
             file_timeout=timeout,
@@ -331,13 +332,11 @@ class _ReaderThread(threading.Thread):
         self.alive = False
         if hasattr(self.__serial, "cancel_read"):
             self.__serial.cancel_read()
-        self.__message_listener_executor.shutdown(wait=False, cancel_futures=False)
+        self.__message_listener_executor.shutdown(wait=True, cancel_futures=False)
         self.__response_message_listener_executor.shutdown(
-            wait=False, cancel_futures=False
+            wait=True, cancel_futures=False
         )
-        self.__file_download_listener_executor.shutdown(
-            wait=False, cancel_futures=False
-        )
+        self.__file_download_listener_executor.shutdown(wait=True, cancel_futures=False)
         self.join(2)
 
     def run(self) -> None:
@@ -364,6 +363,12 @@ class _ReaderThread(threading.Thread):
             except OSError:
                 logging.info("OS Error reading from socket (OSError)")
                 break
+            except ValueError:
+                logging.info("ValueError reading from socket (Probably disconnected)")
+                break
+            except Exception as e:
+                logging.info(f"Exception reading from socket: {str(e)} - disconnecting")
+                break
         self.alive = False
         self.__notify_connection_listeners(connected=False)
 
@@ -376,7 +381,10 @@ class _ReaderThread(threading.Thread):
         loop_count = 0
         try:
             while remaining_size > 0 and self.__serial.is_open:
-                chunk = self.__serial.read(min(buffer_size, remaining_size))
+                bytes_to_read: Optional[int] = self.__serial.in_waiting
+                if not bytes_to_read or bytes_to_read <= 0:
+                    bytes_to_read = buffer_size
+                chunk = self.__serial.read(min(bytes_to_read, remaining_size))
                 if not chunk:
                     raise MissingResponseError("File download failed")
                 curr_pos = f.file_size - remaining_size
@@ -469,6 +477,8 @@ class _ReaderThread(threading.Thread):
         logging.debug(f"RECEIVE: Received header {raw_header.hex()}")
         msg_type, length = struct.unpack(">BH", raw_header)
         logging.debug(f"RECEIVE: Received msg type: {msg_type}, length: {length}")
+        if length > 20480:
+            raise ValueError(f"Message length too long: {length}")
         remaining_length = length - 3
         raw_message = raw_header
         while remaining_length > 0:
