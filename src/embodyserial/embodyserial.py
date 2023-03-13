@@ -129,7 +129,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         """
         if size == 0:
             return tempfile.NamedTemporaryFile(delete=False).name
-        self.send(codec.GetFileUart(types.File(file_name)), timeout=0)
+
         # lock send to prevent sending other messages while downloading
         with self.__sender._send_lock:
             return self.__reader.download_file(
@@ -305,6 +305,9 @@ class _ReaderThread(threading.Thread):
         self.__f = f
         self.__file_mode = True
         try:
+            uart = codec.GetFileUart(types.File(original_file_name))
+            logging.debug(f"Sending message: {uart}, encoded: {uart.encode().hex()}")
+            self.__serial.write(uart.encode())
             if not self.__file_event.wait(timeout):
                 raise MissingResponseError("No file received within timeout")
             if self.__f.file_error:
@@ -353,18 +356,20 @@ class _ReaderThread(threading.Thread):
                     self.__read_file(raw_header, self.__f)
                 else:
                     self.__read_protocol_message(raw_header)
-            except serial.SerialException:
+            except serial.SerialException as ser:
                 # probably some I/O problem such as disconnected USB serial adapters -> exit
-                logging.info("Serial port is closed (SerialException)")
+                logging.info(f"Serial port is closed (SerialException) {str(ser)}")
                 break
             except TypeError:
                 # read returned empty buffer
                 break
-            except OSError:
-                logging.info("OS Error reading from socket (OSError)")
+            except OSError as ose:
+                logging.info(f"OS Error reading from socket (OSError): {str(ose)}")
                 break
-            except ValueError:
-                logging.info("ValueError reading from socket (Probably disconnected)")
+            except ValueError as ve:
+                logging.info(
+                    f"ValueError reading from socket (Probably disconnected): {str(ve)}"
+                )
                 break
             except Exception as e:
                 logging.info(f"Exception reading from socket: {str(e)} - disconnecting")
