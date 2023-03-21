@@ -161,7 +161,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         """Check if port has an active embody device."""
         logging.info(f"Checking candidate port: {port}")
         try:
-            ser = serial.Serial(port=port.device, baudrate=115200, timeout=3)
+            ser = serial.Serial(port=port.device, baudrate=115200, timeout=1)
             ser.write(codec.Heartbeat().encode())
             expected_response = codec.HeartbeatResponse().encode()
             response = ser.read(len(expected_response))
