@@ -62,30 +62,18 @@ def main(args=None):
                 f"Trace level set: {send_helper.set_trace_level(parsed_args.set_trace_level)}"
             )
         elif parsed_args.list_files:
-            try:
-                __list_files(send_helper)
-            except Exception as e:
-                print(f"Error listing files: {e}")
+            __list_files(send_helper)
         elif parsed_args.download_file:
-            try:
-                __download_file(parsed_args.download_file, embody_serial, send_helper)
-            except Exception as e:
-                print(f"Error downloading file: {e}")
+            __download_file(parsed_args.download_file, embody_serial, send_helper)
         elif parsed_args.download_file_with_delay:
-            try:
-                __download_file(
-                    parsed_args.download_file_with_delay,
-                    embody_serial,
-                    send_helper,
-                    0.01,
-                )
-            except Exception as e:
-                print(f"Error downloading file with delay: {e}")
+            __download_file(
+                parsed_args.download_file_with_delay,
+                embody_serial,
+                send_helper,
+                0.01,
+            )
         elif parsed_args.download_files:
-            try:
-                __download_files(embody_serial, send_helper)
-            except Exception as e:
-                print(f"Error downloading files: {e}")
+            __download_files(embody_serial, send_helper)
         elif parsed_args.delete_file:
             print(
                 f"Delete file {parsed_args.delete_file}:"
@@ -101,7 +89,8 @@ def main(args=None):
             print(f"Rebooting device: {send_helper.reboot_device()}")
         else:
             pass
-
+    except Exception as e:
+        print(f"Error occurred: {e}")
     finally:
         embody_serial.shutdown()
 
