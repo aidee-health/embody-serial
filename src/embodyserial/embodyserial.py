@@ -103,7 +103,10 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             if not self.__connected:
                 return
             self.__connected = False
-            self.__serial.close()
+            if self.__serial.is_open:
+                self.__serial.reset_input_buffer()
+                self.__serial.reset_output_buffer()
+                self.__serial.close()
             self.__reader.stop()
             self.__sender.shutdown()
 
@@ -161,7 +164,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         """Check if port has an active embody device."""
         logging.info(f"Checking candidate port: {port}")
         try:
-            ser = serial.Serial(port=port.device, baudrate=115200, timeout=3)
+            ser = serial.Serial(port=port.device, baudrate=115200, timeout=1)
             ser.write(codec.Heartbeat().encode())
             expected_response = codec.HeartbeatResponse().encode()
             response = ser.read(len(expected_response))
