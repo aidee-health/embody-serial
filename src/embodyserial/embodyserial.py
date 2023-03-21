@@ -103,7 +103,10 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             if not self.__connected:
                 return
             self.__connected = False
-            self.__serial.close()
+            if self.__serial.is_open:
+                self.__serial.reset_input_buffer()
+                self.__serial.reset_output_buffer()
+                self.__serial.close()
             self.__reader.stop()
             self.__sender.shutdown()
 
