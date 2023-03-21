@@ -397,6 +397,8 @@ class _ReaderThread(threading.Thread):
                 in_memory_buffer[curr_pos : curr_pos + curr_len] = chunk
                 remaining_size -= curr_len
                 now = time.time()
+                if now == start:
+                    now += 1
                 if loop_count % 20 == 0:
                     self.__async_notify_file_download_in_progress(
                         f,
