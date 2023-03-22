@@ -165,9 +165,18 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         logging.info(f"Checking candidate port: {port}")
         try:
             ser = serial.Serial(port=port.device, baudrate=115200, timeout=1)
+            in_waiting = ser.in_waiting
+            if in_waiting and in_waiting > 0:
+                logging.info(f"Flushing input buffer ({in_waiting} bytes)")
+                ser.read(in_waiting)
+            ser.reset_input_buffer()
+            ser.reset_output_buffer()
             ser.write(codec.Heartbeat().encode())
             expected_response = codec.HeartbeatResponse().encode()
             response = ser.read(len(expected_response))
+            logging.debug(
+                f"Response: {response.hex()} (expected: {expected_response.hex()})"
+            )
             ser.close()
             return response == expected_response
         except Exception as e:

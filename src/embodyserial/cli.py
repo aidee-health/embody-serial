@@ -91,6 +91,8 @@ def main(args=None):
             pass
     except Exception as e:
         print(f"Error occurred: {e}")
+    except KeyboardInterrupt as ke:
+        print(f"Keyboard interrupt: {ke}")
     finally:
         embody_serial.shutdown()
 
