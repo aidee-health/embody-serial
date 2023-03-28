@@ -157,7 +157,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         timeout_seconds_per_retry=1,
         timeout: int = 300,
         delay: float = 0.0,
-    ) -> str:
+    ) -> Optional[str]:
         for retry in range(1, retries + 1):
             try:
                 stored_file = self.download_file(
