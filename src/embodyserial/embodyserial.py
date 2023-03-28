@@ -104,9 +104,18 @@ class EmbodySerial(ConnectionListener, EmbodySender):
                 return
             self.__connected = False
             if self.__serial.is_open:
-                self.__serial.reset_input_buffer()
-                self.__serial.reset_output_buffer()
-                self.__serial.close()
+                try:
+                    self.__serial.reset_input_buffer()
+                except Exception as e:
+                    logging.debug(f"Failed to reset input buffer: {e}")
+                try:
+                    self.__serial.reset_output_buffer()
+                except Exception as e:
+                    logging.debug(f"Failed to reset output buffer: {e}")
+                try:
+                    self.__serial.close()
+                except Exception as e:
+                    logging.warn(f"Failed to close port: {e}")
             self.__reader.stop()
             self.__sender.shutdown()
 
@@ -138,6 +147,33 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             return self.__reader.download_file(
                 file_name, size, download_listener, timeout, delay
             )
+
+    def download_file_with_retries(
+        self,
+        file_name: str,
+        file_size: int,
+        listener: Optional[FileDownloadListener] = None,
+        retries=3,
+        timeout_seconds_per_retry=1,
+        timeout: int = 300,
+        delay: float = 0.0,
+    ) -> Optional[str]:
+        for retry in range(1, retries + 1):
+            try:
+                stored_file = self.download_file(
+                    file_name, file_size, listener, timeout, delay
+                )
+                if stored_file:
+                    logging.info(f"File {file_name} downloaded to: {stored_file}")
+                    return stored_file
+                logging.warn(f"Download failed for {file_name} (attempt: {retry})")
+                time.sleep(timeout_seconds_per_retry)
+                continue
+            except Exception as e:
+                logging.warn(f"Download failed for {file_name} (attempt: {retry}): {e}")
+                time.sleep(timeout_seconds_per_retry)
+                continue
+        return None
 
     @staticmethod
     def __find_serial_port() -> str:
@@ -331,9 +367,9 @@ class _ReaderThread(threading.Thread):
             self.__async_notify_file_download_failed(f, e)
             raise e
         finally:
-            self.__reset_file_mode()
             if hasattr(self.__serial, "timeout") and self.__read_timeout:
                 self.__serial.timeout = self.__read_timeout
+            self.__reset_file_mode()
 
     def __reset_file_mode(self) -> None:
         self.__file_event.clear()
@@ -362,8 +398,7 @@ class _ReaderThread(threading.Thread):
             try:
                 raw_header = self.__serial.read(3)
                 if not raw_header or len(raw_header) < 3:
-                    logging.info("Interrupted. Exiting reader thread.")
-                    break
+                    continue
                 if self.__file_mode and self.__f:
                     self.__read_file(raw_header, self.__f)
                 else:
