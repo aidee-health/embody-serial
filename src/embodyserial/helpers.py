@@ -1,5 +1,7 @@
 """Helpers for the embodyserial interface."""
 
+import logging
+import time
 from datetime import datetime
 from datetime import timezone
 from typing import Optional
@@ -124,6 +126,23 @@ class EmbodySendHelper:
             raise NackError(response)
         assert isinstance(response, codec.DeleteFileResponse)
         return True
+
+    def delete_file_with_retries(
+        self, file_name: str, retries=3, timeout_seconds_per_retry=0.5
+    ) -> bool:
+        for retry in range(1, retries + 1):
+            try:
+                if self.delete_file(file_name):
+                    logging.info(f"Deleted file on device: {file_name}")
+                    return True
+                logging.warn(f"Delete failed for {file_name} (attempt: {retry})")
+                time.sleep(timeout_seconds_per_retry)
+                continue
+            except Exception as e:
+                logging.warn(f"Delete failed for {file_name} (attempt: {retry}): {e}")
+                time.sleep(timeout_seconds_per_retry)
+                continue
+        return False
 
     def set_current_timestamp(self) -> bool:
         return self.set_timestamp(datetime.now(timezone.utc))
