@@ -340,9 +340,9 @@ class _ReaderThread(threading.Thread):
             self.__async_notify_file_download_failed(f, e)
             raise e
         finally:
-            self.__reset_file_mode()
             if hasattr(self.__serial, "timeout") and self.__read_timeout:
                 self.__serial.timeout = self.__read_timeout
+            self.__reset_file_mode()
 
     def __reset_file_mode(self) -> None:
         self.__file_event.clear()
@@ -371,8 +371,7 @@ class _ReaderThread(threading.Thread):
             try:
                 raw_header = self.__serial.read(3)
                 if not raw_header or len(raw_header) < 3:
-                    logging.info("Interrupted. Exiting reader thread.")
-                    break
+                    continue
                 if self.__file_mode and self.__f:
                     self.__read_file(raw_header, self.__f)
                 else:
