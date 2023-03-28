@@ -104,9 +104,18 @@ class EmbodySerial(ConnectionListener, EmbodySender):
                 return
             self.__connected = False
             if self.__serial.is_open:
-                self.__serial.reset_input_buffer()
-                self.__serial.reset_output_buffer()
-                self.__serial.close()
+                try:
+                    self.__serial.reset_input_buffer()
+                except Exception as e:
+                    logging.debug(f"Failed to reset input buffer: {e}")
+                try:
+                    self.__serial.reset_output_buffer()
+                except Exception as e:
+                    logging.debug(f"Failed to reset output buffer: {e}")
+                try:
+                    self.__serial.close()
+                except Exception as e:
+                    logging.warn(f"Failed to close port: {e}")
             self.__reader.stop()
             self.__sender.shutdown()
 
