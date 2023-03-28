@@ -148,6 +148,33 @@ class EmbodySerial(ConnectionListener, EmbodySender):
                 file_name, size, download_listener, timeout, delay
             )
 
+    def download_file_with_retries(
+        self,
+        file_name: str,
+        file_size: int,
+        listener: Optional[FileDownloadListener] = None,
+        retries=3,
+        timeout_seconds_per_retry=1,
+        timeout: int = 300,
+        delay: float = 0.0,
+    ) -> str:
+        for retry in range(1, retries + 1):
+            try:
+                stored_file = self.download_file(
+                    file_name, file_size, listener, timeout, delay
+                )
+                if stored_file:
+                    logging.info(f"File {file_name} downloaded to: {stored_file}")
+                    return stored_file
+                logging.warn(f"Download failed for {file_name} (attempt: {retry})")
+                time.sleep(timeout_seconds_per_retry)
+                continue
+            except Exception as e:
+                logging.warn(f"Download failed for {file_name} (attempt: {retry}): {e}")
+                time.sleep(timeout_seconds_per_retry)
+                continue
+        return None
+
     @staticmethod
     def __find_serial_port() -> str:
         """Find first matching serial port name."""
