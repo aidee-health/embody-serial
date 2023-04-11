@@ -1,6 +1,7 @@
 """Helpers for the embodyserial interface."""
 
 import logging
+import struct
 import time
 from datetime import datetime
 from datetime import timezone
@@ -178,6 +179,15 @@ class EmbodySendHelper:
         self.__sender.send_async(
             msg=codec.ExecuteCommand(
                 command_id=codec.ExecuteCommand.REBOOT_DEVICE, value=b""
+            )
+        )
+        return True
+
+    def click_button(self, click_count: int, click_duration_ms: int) -> bool:
+        self.__sender.send_async(
+            msg=codec.ExecuteCommand(
+                command_id=types.ExecuteCommandType.PRESS_BUTTON.value,
+                value=struct.pack(">BH", click_count, click_duration_ms),
             )
         )
         return True
