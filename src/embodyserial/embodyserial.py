@@ -132,6 +132,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         download_listener: Optional[FileDownloadListener] = None,
         timeout: int = 300,
         delay: float = 0.0,
+        ignore_crc_error=False,
     ) -> str:
         """Download file from device and write to temporary file.
 
@@ -145,7 +146,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         # lock send to prevent sending other messages while downloading
         with self.__sender._send_lock:
             return self.__reader.download_file(
-                file_name, size, download_listener, timeout, delay
+                file_name, size, download_listener, timeout, delay, ignore_crc_error
             )
 
     def download_file_with_retries(
