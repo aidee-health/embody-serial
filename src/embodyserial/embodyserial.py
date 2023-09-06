@@ -296,6 +296,7 @@ class _FileDownload:
     file_error: Optional[Exception] = None
     file_download_listener: Optional[FileDownloadListener] = None
     file_delay: float = 0.0
+    ignore_crc_error: bool = False
 
 
 class _ReaderThread(threading.Thread):
@@ -339,6 +340,7 @@ class _ReaderThread(threading.Thread):
         download_listener: Optional[FileDownloadListener] = None,
         timeout: int = 300,
         delay=0.0,
+        ignore_crc_error=False,
     ) -> str:
         """Set reader in file mode and read file."""
         if hasattr(self.__serial, "timeout"):
@@ -349,6 +351,7 @@ class _ReaderThread(threading.Thread):
             original_file_name=original_file_name,
             file_download_listener=download_listener,
             file_delay=delay,
+            ignore_crc_error=ignore_crc_error,
         )
         self.__f = f
         self.__file_mode = True
@@ -478,8 +481,9 @@ class _ReaderThread(threading.Thread):
                 f.file_error = CrcError(
                     f"Invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}"
                 )
-                self.__async_notify_file_download_failed(f, f.file_error)
-                return
+                if not f.ignore_crc_error:
+                    self.__async_notify_file_download_failed(f, f.file_error)
+                    return
             tmp = tempfile.NamedTemporaryFile(delete=False)
             tmp.write(in_memory_buffer)
             tmp.flush()
