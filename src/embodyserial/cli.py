@@ -64,16 +64,22 @@ def main(args=None):
         elif parsed_args.list_files:
             __list_files(send_helper)
         elif parsed_args.download_file:
-            __download_file(parsed_args.download_file, embody_serial, send_helper)
+            __download_file(
+                parsed_args.download_file,
+                embody_serial,
+                send_helper,
+                parsed_args.ignore_crc_error,
+            )
         elif parsed_args.download_file_with_delay:
             __download_file(
                 parsed_args.download_file_with_delay,
                 embody_serial,
                 send_helper,
                 0.01,
+                parsed_args.ignore_crc_error,
             )
         elif parsed_args.download_files:
-            __download_files(embody_serial, send_helper)
+            __download_files(embody_serial, send_helper, parsed_args.ignore_crc_error)
         elif parsed_args.delete_file:
             print(
                 f"Delete file {parsed_args.delete_file}:"
@@ -116,14 +122,18 @@ def __list_files(send_helper):
         print("[]")
 
 
-def __download_files(embody_serial: EmbodySerial, send_helper: EmbodySendHelper):
+def __download_files(
+    embody_serial: EmbodySerial,
+    send_helper: EmbodySendHelper,
+    ignore_crc_error: bool = False,
+):
     files = send_helper.get_files()
     if len(files) == 0:
         print("No files on device")
         return
     print(f"Found {len(files)} {'files' if len(files) > 1 else 'file'}")
     for file in files:
-        __do_download_file(file, embody_serial, send_helper)
+        __do_download_file(file, embody_serial, send_helper, ignore_crc_error)
 
 
 def __download_file(
@@ -131,6 +141,7 @@ def __download_file(
     embody_serial: EmbodySerial,
     send_helper: EmbodySendHelper,
     delay: float = 0.0,
+    ignore_crc_error: bool = False,
 ):
     filtered_files: list[tuple[str, int]] = [
         tup for tup in send_helper.get_files() if tup[0] == file_name
@@ -138,7 +149,9 @@ def __download_file(
     if not filtered_files or len(filtered_files) == 0:
         print(f"Unknown file name {file_name}")
         return
-    __do_download_file(filtered_files[0], embody_serial, send_helper, delay)
+    __do_download_file(
+        filtered_files[0], embody_serial, send_helper, delay, ignore_crc_error
+    )
 
 
 def _show_cli_progress_bar(progress: float, total: int, kbps: float):
@@ -159,6 +172,7 @@ def __do_download_file(
     embody_serial: EmbodySerial,
     send_helper: EmbodySendHelper,
     delay: float = 0.0,
+    ignore_crc_error: bool = False,
 ):
     print(f"Downloading: {file[0]}")
 
@@ -187,7 +201,11 @@ def __do_download_file(
 
     listener = _DownloadListener()
     embody_serial.download_file(
-        file_name=file[0], size=file[1], download_listener=listener, delay=delay
+        file_name=file[0],
+        size=file[1],
+        download_listener=listener,
+        delay=delay,
+        ignore_crc_error=ignore_crc_error,
     )
 
 
@@ -232,6 +250,9 @@ def __get_parser():
     )
     parser.add_argument(
         "--download-files", help="Download all files", action="store_true", default=None
+    )
+    parser.add_argument(
+        "--ignore-crc-error", help="Ignore CRC errors", action="store_false"
     )
     parser.add_argument(
         "--set-trace-level", help="Set trace level", type=int, default=None
