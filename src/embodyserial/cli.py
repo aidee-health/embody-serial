@@ -7,6 +7,7 @@ import logging
 import shutil
 import sys
 from pathlib import Path
+from typing import Optional
 
 from embodyserial import __version__
 from embodyserial.embodyserial import EmbodySerial
@@ -128,7 +129,7 @@ def __download_files(
     embody_serial: EmbodySerial,
     send_helper: EmbodySendHelper,
     ignore_crc_error: bool = False,
-    output_folder: Path = None,
+    output_folder: Optional[Path] = None,
 ):
     files = send_helper.get_files()
     if len(files) == 0:
@@ -137,7 +138,11 @@ def __download_files(
     print(f"Found {len(files)} {'files' if len(files) > 1 else 'file'}")
     for file in files:
         __do_download_file(
-            file, embody_serial, send_helper, ignore_crc_error, output_folder
+            file,
+            embody_serial,
+            send_helper,
+            ignore_crc_error=ignore_crc_error,
+            output_folder=output_folder,
         )
 
 
@@ -147,7 +152,7 @@ def __download_file(
     send_helper: EmbodySendHelper,
     delay: float = 0.0,
     ignore_crc_error: bool = False,
-    output_folder: Path = None,
+    output_folder: Optional[Path] = None,
 ):
     filtered_files: list[tuple[str, int]] = [
         tup for tup in send_helper.get_files() if tup[0] == file_name
@@ -184,7 +189,7 @@ def __do_download_file(
     send_helper: EmbodySendHelper,
     delay: float = 0.0,
     ignore_crc_error: bool = False,
-    output_folder: Path = None,
+    output_folder: Optional[Path] = None,
 ):
     print(f"Downloading: {file[0]}")
 
