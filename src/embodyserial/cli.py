@@ -4,7 +4,10 @@ Parse command line arguments, invoke embody device.
 """
 import argparse
 import logging
+import shutil
 import sys
+from pathlib import Path
+from typing import Optional
 
 from embodyserial import __version__
 from embodyserial.embodyserial import EmbodySerial
@@ -126,6 +129,7 @@ def __download_files(
     embody_serial: EmbodySerial,
     send_helper: EmbodySendHelper,
     ignore_crc_error: bool = False,
+    output_folder: Optional[Path] = None,
 ):
     files = send_helper.get_files()
     if len(files) == 0:
@@ -133,7 +137,13 @@ def __download_files(
         return
     print(f"Found {len(files)} {'files' if len(files) > 1 else 'file'}")
     for file in files:
-        __do_download_file(file, embody_serial, send_helper, ignore_crc_error)
+        __do_download_file(
+            file,
+            embody_serial,
+            send_helper,
+            ignore_crc_error=ignore_crc_error,
+            output_folder=output_folder,
+        )
 
 
 def __download_file(
@@ -142,6 +152,7 @@ def __download_file(
     send_helper: EmbodySendHelper,
     delay: float = 0.0,
     ignore_crc_error: bool = False,
+    output_folder: Optional[Path] = None,
 ):
     filtered_files: list[tuple[str, int]] = [
         tup for tup in send_helper.get_files() if tup[0] == file_name
@@ -150,7 +161,12 @@ def __download_file(
         print(f"Unknown file name {file_name}")
         return
     __do_download_file(
-        filtered_files[0], embody_serial, send_helper, delay, ignore_crc_error
+        filtered_files[0],
+        embody_serial,
+        send_helper,
+        delay,
+        ignore_crc_error,
+        output_folder,
     )
 
 
@@ -173,6 +189,7 @@ def __do_download_file(
     send_helper: EmbodySendHelper,
     delay: float = 0.0,
     ignore_crc_error: bool = False,
+    output_folder: Optional[Path] = None,
 ):
     print(f"Downloading: {file[0]}")
 
@@ -200,13 +217,19 @@ def __do_download_file(
             print(f" {original_file_name} failed to download: {error}")
 
     listener = _DownloadListener()
-    embody_serial.download_file(
+    tmp_file = embody_serial.download_file(
         file_name=file[0],
         size=file[1],
         download_listener=listener,
         delay=delay,
         ignore_crc_error=ignore_crc_error,
     )
+    if output_folder and tmp_file:
+        if not output_folder.exists():
+            output_folder.mkdir(parents=True)
+        filepath = output_folder.joinpath(file[0])
+        shutil.move(tmp_file, filepath)
+        print(f" {file[0]} moved to {filepath}")
 
 
 def __get_args(args):
@@ -253,6 +276,12 @@ def __get_parser():
     )
     parser.add_argument(
         "--ignore-crc-error", help="Ignore CRC errors", action="store_false"
+    )
+    parser.add_argument(
+        "--output-folder",
+        help="Download file(s) to specified folder",
+        type=Path,
+        default=None,
     )
     parser.add_argument(
         "--set-trace-level", help="Set trace level", type=int, default=None
