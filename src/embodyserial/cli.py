@@ -227,7 +227,9 @@ def __do_download_file(
     if output_folder and tmp_file:
         if not output_folder.exists():
             output_folder.mkdir(parents=True)
-        shutil.move(tmp_file, output_folder.joinpath(file[0]))
+        filepath = output_folder.joinpath(file[0])
+        shutil.move(tmp_file, filepath)
+        print(f" {file[0]} moved to {filepath}")
 
 
 def __get_args(args):
