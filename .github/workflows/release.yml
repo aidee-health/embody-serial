@@ -54,7 +54,7 @@ jobs:
             bash -o pipefail -c "poetry version -s"
 
       - name: Bump version for developmental release
-        if: "! steps.check-version.outputs.tag"
+        if: ${{ ! steps.check-version.outputs.tag }}
         run: |
           poetry version patch &&
           version=$(poetry version -s) &&
