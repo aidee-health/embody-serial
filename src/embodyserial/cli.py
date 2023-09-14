@@ -72,6 +72,8 @@ def main(args=None):
                 embody_serial,
                 send_helper,
                 parsed_args.ignore_crc_error,
+                parsed_args.output_folder,
+                parsed_args.delete,
             )
         elif parsed_args.download_file_with_delay:
             __download_file(
@@ -80,9 +82,17 @@ def main(args=None):
                 send_helper,
                 0.01,
                 parsed_args.ignore_crc_error,
+                parsed_args.output_folder,
+                parsed_args.delete,
             )
         elif parsed_args.download_files:
-            __download_files(embody_serial, send_helper, parsed_args.ignore_crc_error)
+            __download_files(
+                embody_serial,
+                send_helper,
+                parsed_args.ignore_crc_error,
+                parsed_args.output_folder,
+                parsed_args.delete,
+            )
         elif parsed_args.delete_file:
             print(
                 f"Delete file {parsed_args.delete_file}:"
@@ -130,6 +140,7 @@ def __download_files(
     send_helper: EmbodySendHelper,
     ignore_crc_error: bool = False,
     output_folder: Optional[Path] = None,
+    delete: bool = False,
 ):
     files = send_helper.get_files()
     if len(files) == 0:
@@ -143,6 +154,7 @@ def __download_files(
             send_helper,
             ignore_crc_error=ignore_crc_error,
             output_folder=output_folder,
+            delete=delete,
         )
 
 
@@ -153,6 +165,7 @@ def __download_file(
     delay: float = 0.0,
     ignore_crc_error: bool = False,
     output_folder: Optional[Path] = None,
+    delete: bool = False,
 ):
     filtered_files: list[tuple[str, int]] = [
         tup for tup in send_helper.get_files() if tup[0] == file_name
@@ -167,6 +180,7 @@ def __download_file(
         delay,
         ignore_crc_error,
         output_folder,
+        delete,
     )
 
 
@@ -190,6 +204,7 @@ def __do_download_file(
     delay: float = 0.0,
     ignore_crc_error: bool = False,
     output_folder: Optional[Path] = None,
+    delete: bool = False,
 ):
     print(f"Downloading: {file[0]}")
 
@@ -230,6 +245,9 @@ def __do_download_file(
         filepath = output_folder.joinpath(file[0])
         shutil.move(tmp_file, filepath)
         print(f" {file[0]} moved to {filepath}")
+
+    if delete and tmp_file:
+        print(f" Delete file {file[0]}: {send_helper.delete_file(file_name=file[0])}")
 
 
 def __get_args(args):
@@ -281,6 +299,12 @@ def __get_parser():
         "--output-folder",
         help="Download file(s) to specified folder",
         type=Path,
+        default=None,
+    )
+    parser.add_argument(
+        "--delete",
+        help="Delete on device after successful download",
+        action="store_true",
         default=None,
     )
     parser.add_argument(
