@@ -72,6 +72,7 @@ def main(args=None):
                 embody_serial,
                 send_helper,
                 parsed_args.ignore_crc_error,
+                parsed_args.output_folder,
             )
         elif parsed_args.download_file_with_delay:
             __download_file(
@@ -80,9 +81,15 @@ def main(args=None):
                 send_helper,
                 0.01,
                 parsed_args.ignore_crc_error,
+                parsed_args.output_folder,
             )
         elif parsed_args.download_files:
-            __download_files(embody_serial, send_helper, parsed_args.ignore_crc_error)
+            __download_files(
+                embody_serial,
+                send_helper,
+                parsed_args.ignore_crc_error,
+                parsed_args.output_folder,
+            )
         elif parsed_args.delete_file:
             print(
                 f"Delete file {parsed_args.delete_file}:"
