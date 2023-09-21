@@ -215,9 +215,7 @@ def __do_download_file(
             self, original_file_name: str, size: int, progress: float, kbps: float
         ) -> None:
             """Display progress in cli."""
-            if self.download_invocation_count % 10 == 0 or progress == 100:
-                _show_cli_progress_bar(progress, size, kbps)
-            self.download_invocation_count += 1
+            _show_cli_progress_bar(progress, size, kbps)
 
         def on_file_download_complete(
             self, original_file_name: str, path: str, kbps: float
