@@ -5,6 +5,7 @@ and subscribing for incoming messages from the device.
 """
 import concurrent.futures
 import logging
+import os
 import re
 import struct
 import sys
@@ -74,7 +75,8 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             self.__serial = serial_instance
         else:
             self.__serial = serial.Serial(port=self.__port, baudrate=115200)
-            self.__serial.set_buffer_size(rx_size=128 * 1024, tx_size=12800)
+            if os.name == "nt":  # sys.platform == 'win32':
+                self.__serial.set_buffer_size(rx_size=128 * 1024, tx_size=12800)
         self.__connected = True
         self.__sender = _MessageSender(self.__serial)
         self.__reader = _ReaderThread(serial_instance=self.__serial)
@@ -430,6 +432,7 @@ class _ReaderThread(threading.Thread):
         self.__notify_connection_listeners(connected=False)
 
     def __read_file(self, first_bytes: bytes, f: _FileDownload) -> None:
+        buffer_size = 16 * 1024
         self.__serial.timeout = 0
         remaining_size = f.file_size - len(first_bytes)
         start = time.time()
@@ -437,9 +440,11 @@ class _ReaderThread(threading.Thread):
         in_memory_buffer = bytearray()
         in_memory_buffer.extend(first_bytes)
         loop_count = 0
-        bytes_to_read = 16 * 1024
         try:
             while remaining_size > 0 and self.__serial.is_open:
+                bytes_to_read: Optional[int] = self.__serial.in_waiting
+                if not bytes_to_read or bytes_to_read <= 0:
+                    bytes_to_read = buffer_size
                 chunk = self.__serial.read(min(bytes_to_read, remaining_size))
                 if chunk:
                     curr_len = len(chunk)
