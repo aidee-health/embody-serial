@@ -74,7 +74,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             self.__serial = serial_instance
         else:
             self.__serial = serial.Serial(port=self.__port, baudrate=115200)
-            self.__serial.set_buffer_size(rx_size = 128*1024, tx_size = 12800)
+            self.__serial.set_buffer_size(rx_size=128 * 1024, tx_size=12800)
         self.__connected = True
         self.__sender = _MessageSender(self.__serial)
         self.__reader = _ReaderThread(serial_instance=self.__serial)
@@ -437,23 +437,24 @@ class _ReaderThread(threading.Thread):
         in_memory_buffer = bytearray()
         in_memory_buffer.extend(first_bytes)
         loop_count = 0
-        bytes_to_read = 16*1024
+        bytes_to_read = 16 * 1024
         try:
             while remaining_size > 0 and self.__serial.is_open:
                 chunk = self.__serial.read(min(bytes_to_read, remaining_size))
                 if chunk:
-                    curr_pos = f.file_size - remaining_size
                     curr_len = len(chunk)
                     in_memory_buffer.extend(chunk)
                     remaining_size -= curr_len
                     now = time.time()
-                    #logging.warning(f"Loop {str(loop_count)} time {str(now-start)} chunk {str(curr_len)}", exc_info=False)
-                    if (now>(last+0.5)): #Update every 500ms
+                    # logging.warning(f"Loop {str(loop_count)} time {str(now-start)} chunk {str(curr_len)}", exc_info=False)
+                    if now > (last + 0.5):  # Update every 500ms
                         self.__async_notify_file_download_in_progress(
                             f,
                             f.file_size,
                             round(((f.file_size - remaining_size) / f.file_size) * 100),
-                            round(((f.file_size - remaining_size) / 1024) / (now - start)),
+                            round(
+                                ((f.file_size - remaining_size) / 1024) / (now - start)
+                            ),
                         )
                         last = now
                 else:
@@ -463,7 +464,9 @@ class _ReaderThread(threading.Thread):
                     raise TimeoutError(
                         f"Reading file took too long. Read {f.file_size - remaining_size} bytes"
                     )
-                if time.time() - now > 5: # More than 5 seconds since we got anything from unit!
+                if (
+                    time.time() - now > 5
+                ):  # More than 5 seconds since we got anything from unit!
                     raise TimeoutError(
                         f"Inter-block timeout!. Read {f.file_size - remaining_size} bytes"
                     )
