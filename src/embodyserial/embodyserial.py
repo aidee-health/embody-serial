@@ -464,6 +464,8 @@ class _ReaderThread(threading.Thread):
                     raise TimeoutError(
                         f"Reading file took too long. Read {f.file_size - remaining_size} bytes"
                     )
+                if f.file_delay > 0:
+                    time.sleep(f.file_delay)
                 if (
                     time.time() - now > 5
                 ):  # More than 5 seconds since we got anything from unit!
