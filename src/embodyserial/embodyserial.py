@@ -343,7 +343,7 @@ class _ReaderThread(threading.Thread):
         size: int,
         download_listener: Optional[FileDownloadListener] = None,
         timeout: int = 300,
-        delay=0.0,
+        delay: float = 0.0,
         ignore_crc_error=False,
     ) -> str:
         """Set reader in file mode and read file."""
@@ -442,11 +442,8 @@ class _ReaderThread(threading.Thread):
         loop_count = 0
         try:
             while remaining_size > 0 and self.__serial.is_open:
-                bytes_to_read: Optional[int] = self.__serial.in_waiting
-                if not bytes_to_read or bytes_to_read <= 0:
-                    bytes_to_read = buffer_size
-                chunk = self.__serial.read(min(bytes_to_read, remaining_size))
-                if chunk:
+                chunk = self.__serial.read(min(buffer_size, remaining_size))
+                if chunk and len(chunk) > 0:
                     curr_len = len(chunk)
                     in_memory_buffer.extend(chunk)
                     remaining_size -= curr_len

@@ -68,30 +68,30 @@ def main(args=None):
             __list_files(send_helper)
         elif parsed_args.download_file:
             __download_file(
-                parsed_args.download_file,
-                embody_serial,
-                send_helper,
-                parsed_args.ignore_crc_error,
-                parsed_args.output_folder,
-                parsed_args.delete,
+                file_name=parsed_args.download_file,
+                embody_serial=embody_serial,
+                send_helper=send_helper,
+                ignore_crc_error=parsed_args.ignore_crc_error,
+                output_folder=parsed_args.output_folder,
+                delete=parsed_args.delete,
             )
         elif parsed_args.download_file_with_delay:
             __download_file(
-                parsed_args.download_file_with_delay,
-                embody_serial,
-                send_helper,
-                0.01,
-                parsed_args.ignore_crc_error,
-                parsed_args.output_folder,
-                parsed_args.delete,
+                file_name=parsed_args.download_file_with_delay,
+                embody_serial=embody_serial,
+                send_helper=send_helper,
+                delay=0.01,
+                ignore_crc_error=parsed_args.ignore_crc_error,
+                output_folder=parsed_args.output_folder,
+                delete=parsed_args.delete,
             )
         elif parsed_args.download_files:
             __download_files(
-                embody_serial,
-                send_helper,
-                parsed_args.ignore_crc_error,
-                parsed_args.output_folder,
-                parsed_args.delete,
+                embody_serial=embody_serial,
+                send_helper=send_helper,
+                ignore_crc_error=parsed_args.ignore_crc_error,
+                output_folder=parsed_args.output_folder,
+                delete=parsed_args.delete,
             )
         elif parsed_args.delete_file:
             print(
