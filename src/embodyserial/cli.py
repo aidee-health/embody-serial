@@ -37,6 +37,7 @@ def main(args=None):
     becomes sys.exit(main()).
     The __main__ entry point similarly wraps sys.exit().
     """
+    error = None
     if args is None:
         args = sys.argv[1:]
 
@@ -108,12 +109,22 @@ def main(args=None):
             print(f"Rebooting device: {send_helper.reboot_device()}")
         else:
             pass
+    except KeyboardInterrupt as e:
+        print(f"Keyboard interrupt: {e}")
+        error = e
+    except TimeoutError as e:
+        print(f"Timeout occurred: {e}")
+        error = e
     except Exception as e:
         print(f"Error occurred: {e}")
-    except KeyboardInterrupt as ke:
-        print(f"Keyboard interrupt: {ke}")
+        error = e
     finally:
         embody_serial.shutdown()
+        if error is TimeoutError:
+            sys.exit(-2)
+        if error == None:
+            sys.exit(0)
+        sys.exit(-1)
 
 
 def __get_all_attributes(send_helper):
