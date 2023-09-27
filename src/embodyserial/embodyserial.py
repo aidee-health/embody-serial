@@ -106,6 +106,8 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             if not self.__connected:
                 return
             self.__connected = False
+            self.__reader.stop()
+            self.__sender.shutdown()
             if self.__serial.is_open:
                 try:
                     self.__serial.reset_input_buffer()
@@ -119,8 +121,6 @@ class EmbodySerial(ConnectionListener, EmbodySender):
                     self.__serial.close()
                 except Exception as e:
                     logging.warn(f"Failed to close port: {e}")
-            self.__reader.stop()
-            self.__sender.shutdown()
 
     def on_connected(self, connected: bool) -> None:
         """Implement connection listener interface and handle disconnect events"""
@@ -389,7 +389,8 @@ class _ReaderThread(threading.Thread):
             return
         self.alive = False
         if hasattr(self.__serial, "cancel_read"):
-            self.__serial.cancel_read()
+            if self.__serial.is_open:
+                self.__serial.cancel_read()
         self.__message_listener_executor.shutdown(wait=True, cancel_futures=False)
         self.__response_message_listener_executor.shutdown(
             wait=True, cancel_futures=False
@@ -432,7 +433,6 @@ class _ReaderThread(threading.Thread):
         self.__notify_connection_listeners(connected=False)
 
     def __read_file(self, first_bytes: bytes, f: _FileDownload) -> None:
-        buffer_size = 16 * 1024
         self.__serial.timeout = 0
         remaining_size = f.file_size - len(first_bytes)
         start = time.time()
@@ -440,23 +440,22 @@ class _ReaderThread(threading.Thread):
         in_memory_buffer = bytearray()
         in_memory_buffer.extend(first_bytes)
         loop_count = 0
+        bytes_to_read = 16*1024
         try:
             while remaining_size > 0 and self.__serial.is_open:
-                chunk = self.__serial.read(min(buffer_size, remaining_size))
+                chunk = self.__serial.read(min(bytes_to_read, remaining_size))
                 if chunk and len(chunk) > 0:
                     curr_len = len(chunk)
                     in_memory_buffer.extend(chunk)
                     remaining_size -= curr_len
                     now = time.time()
                     # logging.warning(f"Loop {str(loop_count)} time {str(now-start)} chunk {str(curr_len)}", exc_info=False)
-                    if now > (last + 0.5):  # Update every 500ms
+                    if now > (last+0.5):  # Update every 500ms
                         self.__async_notify_file_download_in_progress(
                             f,
                             f.file_size,
                             round(((f.file_size - remaining_size) / f.file_size) * 100),
-                            round(
-                                ((f.file_size - remaining_size) / 1024) / (now - start)
-                            ),
+                            round(((f.file_size - remaining_size) / 1024) / (now - start)),
                         )
                         last = now
                 else:
@@ -468,9 +467,7 @@ class _ReaderThread(threading.Thread):
                     )
                 if f.file_delay > 0:
                     time.sleep(f.file_delay)
-                if (
-                    time.time() - now > 5
-                ):  # More than 5 seconds since we got anything from unit!
+                if time.time() - now > 5: # More than 5 seconds since we got anything from unit!
                     raise TimeoutError(
                         f"Inter-block timeout!. Read {f.file_size - remaining_size} bytes out of {f.file_size}"
                     )
