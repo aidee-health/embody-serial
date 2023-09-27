@@ -467,10 +467,11 @@ class _ReaderThread(threading.Thread):
                     )
                 if f.file_delay > 0:
                     time.sleep(f.file_delay)
-                if time.time() - now > 5: # More than 5 seconds since we got anything from unit!
-                    raise TimeoutError(
-                        f"Inter-block timeout!. Read {f.file_size - remaining_size} bytes out of {f.file_size}"
-                    )
+                else:
+                    if time.time() - now > 5: # More than 5 seconds since we got anything from unit!
+                        raise TimeoutError(
+                            f"Inter-block timeout!. Read {f.file_size - remaining_size} bytes out of {f.file_size}"
+                        )
             self.__serial.timeout = 10
             raw_crc_received = self.__serial.read(2)
             end = time.time()
