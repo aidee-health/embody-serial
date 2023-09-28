@@ -371,7 +371,6 @@ class _ReaderThread(threading.Thread):
                 raise MissingResponseError("No file received")
             return self.__f.file_name
         except Exception as e:
-            self.__async_notify_file_download_failed(f, e)
             raise e
         finally:
             if hasattr(self.__serial, "timeout") and self.__read_timeout:
@@ -476,9 +475,11 @@ class _ReaderThread(threading.Thread):
                         raise TimeoutError(
                             f"Inter-block timeout!. Read {f.file_size - remaining_size} bytes out of {f.file_size}"
                         )
-            self.__serial.timeout = 10
+            self.__serial.timeout = 5
             raw_crc_received = self.__serial.read(2)
             end = time.time()
+            if not raw_crc_received or len(raw_crc_received) < 2:
+                f.file_error = CrcError("Missing/too short crc")
             self.__async_notify_file_download_in_progress(
                 f,
                 f.file_size,
@@ -492,12 +493,10 @@ class _ReaderThread(threading.Thread):
             (crc_received,) = struct.unpack(">H", raw_crc_received)
             calculated_crc = crc.crc16(data=in_memory_buffer)
             if not crc_received == calculated_crc:
-                f.file_error = CrcError(
-                    f"Invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}"
-                )
                 if not f.ignore_crc_error:
-                    self.__async_notify_file_download_failed(f, f.file_error)
-                    raise f.file_error
+                    raise CrcError(
+                        f"Invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}"
+                    )
             tmp = tempfile.NamedTemporaryFile(delete=False)
             tmp.write(in_memory_buffer)
             tmp.flush()
@@ -508,18 +507,15 @@ class _ReaderThread(threading.Thread):
             )
         except TimeoutError as e:
             f.file_error = e
-            self.__async_notify_file_download_failed(f, e)
+        except CrcError as e:
+            if not f.ignore_crc_error:
+                f.file_error = e
         except Exception as e:
             f.file_error = e
-            self.__async_notify_file_download_failed(f, e)
         finally:
-            self.__file_event.set()
             if f.file_error:
-                if isinstance(f.file_error, CrcError):
-                    if not f.ignore_crc_error:
-                        raise f.file_error
-                else:
-                    raise f.file_error
+                self.__async_notify_file_download_failed(f, f.file_error)
+            self.__file_event.set()
 
     def __async_notify_file_download_in_progress(
         self, f: _FileDownload, size: int, progress: float, kbps: float
