@@ -13,7 +13,7 @@ from embodyserial import __version__
 from embodyserial.embodyserial import EmbodySerial
 from embodyserial.helpers import EmbodySendHelper
 from embodyserial.listeners import FileDownloadListener
-
+from embodyserial.exceptions import CrcError
 
 get_attributes_dict: dict[str, str] = {
     "serialno": "get_serial_no",
@@ -120,11 +120,14 @@ def main(args=None):
         error = e
     finally:
         embody_serial.shutdown()
-        if error is TimeoutError:
-            sys.exit(-2)
-        if error == None:
-            sys.exit(0)
-        sys.exit(-1)
+        if error:
+            print(f"Error: '{error}' is {type(error)}")
+            if isinstance(error, TimeoutError):
+                sys.exit(-3)
+            if isinstance(error, CrcError):
+                sys.exit(-2)
+            sys.exit(-1)
+        sys.exit(0)
 
 
 def __get_all_attributes(send_helper):
@@ -221,6 +224,7 @@ def __do_download_file(
 
     class _DownloadListener(FileDownloadListener):
         download_invocation_count = 0
+        error: Exception = None
 
         def on_file_download_progress(
             self, original_file_name: str, size: int, progress: float, kbps: float
@@ -238,7 +242,7 @@ def __do_download_file(
             self, original_file_name: str, error: Exception
         ) -> None:
             """Process file download failure."""
-            print(f" {original_file_name} failed to download: {error}")
+            #print(f" {original_file_name} failed to download: {error}")
 
     listener = _DownloadListener()
     tmp_file = embody_serial.download_file(

@@ -375,7 +375,7 @@ class _ReaderThread(threading.Thread):
             raise e
         finally:
             if hasattr(self.__serial, "timeout") and self.__read_timeout:
-                self.__serial.timeout = self.__read_timeout
+                self.__serial.timeout = 20 # 300s timeout is for file transfer, NOT a single operation or everything hangs. Impossible to break!
             self.__reset_file_mode()
 
     def __reset_file_mode(self) -> None:
@@ -493,7 +493,7 @@ class _ReaderThread(threading.Thread):
                 )
                 if not f.ignore_crc_error:
                     self.__async_notify_file_download_failed(f, f.file_error)
-                    return
+                    raise f.file_error
             tmp = tempfile.NamedTemporaryFile(delete=False)
             tmp.write(in_memory_buffer)
             tmp.flush()
@@ -502,11 +502,20 @@ class _ReaderThread(threading.Thread):
             self.__async_notify_file_download_completed(
                 f, round((f.file_size / 1024) / (end - start), 2)
             )
+        except TimeoutError as e:
+            f.file_error = e
+            self.__async_notify_file_download_failed(f, e)
         except Exception as e:
             f.file_error = e
             self.__async_notify_file_download_failed(f, e)
         finally:
             self.__file_event.set()
+            if f.file_error:
+                if f.file_error:
+                    if not f.ignore_crc_error:
+                        raise f.file_error
+                else:
+                    raise f.file_error
 
     def __async_notify_file_download_in_progress(
         self, f: _FileDownload, size: int, progress: float, kbps: float
