@@ -375,7 +375,7 @@ class _ReaderThread(threading.Thread):
             raise e
         finally:
             if hasattr(self.__serial, "timeout") and self.__read_timeout:
-                self.__serial.timeout = 20 # 300s timeout is for file transfer, NOT a single operation or everything hangs. Impossible to break!
+                self.__serial.timeout = 20
             self.__reset_file_mode()
 
     def __reset_file_mode(self) -> None:
@@ -440,7 +440,7 @@ class _ReaderThread(threading.Thread):
         in_memory_buffer = bytearray()
         in_memory_buffer.extend(first_bytes)
         loop_count = 0
-        bytes_to_read = 16*1024
+        bytes_to_read = 16 * 1024
         try:
             while remaining_size > 0 and self.__serial.is_open:
                 chunk = self.__serial.read(min(bytes_to_read, remaining_size))
@@ -450,12 +450,14 @@ class _ReaderThread(threading.Thread):
                     remaining_size -= curr_len
                     now = time.time()
                     # logging.warning(f"Loop {str(loop_count)} time {str(now-start)} chunk {str(curr_len)}", exc_info=False)
-                    if now > (last+0.5):  # Update every 500ms
+                    if now > (last + 0.5):  # Update every 500ms
                         self.__async_notify_file_download_in_progress(
                             f,
                             f.file_size,
                             round(((f.file_size - remaining_size) / f.file_size) * 100),
-                            round(((f.file_size - remaining_size) / 1024) / (now - start)),
+                            round(
+                                ((f.file_size - remaining_size) / 1024) / (now - start)
+                            ),
                         )
                         last = now
                 else:
@@ -468,7 +470,9 @@ class _ReaderThread(threading.Thread):
                 if f.file_delay > 0:
                     time.sleep(f.file_delay)
                 else:
-                    if time.time() - now > 5: # More than 5 seconds since we got anything from unit!
+                    if (
+                        time.time() - now > 5
+                    ):  # More than 5 seconds since we got anything from unit!
                         raise TimeoutError(
                             f"Inter-block timeout!. Read {f.file_size - remaining_size} bytes out of {f.file_size}"
                         )
@@ -511,7 +515,7 @@ class _ReaderThread(threading.Thread):
         finally:
             self.__file_event.set()
             if f.file_error:
-                if f.file_error:
+                if isinstance(f.file_error, CrcError):
                     if not f.ignore_crc_error:
                         raise f.file_error
                 else:
