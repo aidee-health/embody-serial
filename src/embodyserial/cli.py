@@ -122,7 +122,7 @@ def main(args=None):
     finally:
         embody_serial.shutdown()
         if error:
-            print(f"Error: 'error' is {type(error)}")
+            print(f"({type(error)}): {error}")
             if isinstance(error, TimeoutError):
                 sys.exit(-3)
             if isinstance(error, CrcError):
