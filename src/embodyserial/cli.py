@@ -11,7 +11,7 @@ from typing import Optional
 
 from embodyserial import __version__
 from embodyserial.embodyserial import EmbodySerial
-from embodyserial.exceptions import CrcError
+import embodyserial.exceptions as embodyExceptions
 from embodyserial.helpers import EmbodySendHelper
 from embodyserial.listeners import FileDownloadListener
 
@@ -113,9 +113,6 @@ def main(args=None):
     except KeyboardInterrupt as e:
         print(f"Keyboard interrupt: {e}")
         error = e
-    except TimeoutError as e:
-        print(f"Timeout occurred: {e}")
-        error = e
     except Exception as e:
         print(f"Error occurred: {e}")
         error = e
@@ -123,9 +120,9 @@ def main(args=None):
         embody_serial.shutdown()
         if error:
             print(f"({type(error)}): {error}")
-            if isinstance(error, TimeoutError):
+            if isinstance(error, embodyExceptions.TimeoutError):
                 sys.exit(-3)
-            if isinstance(error, CrcError):
+            if isinstance(error, embodyExceptions.CrcError):
                 sys.exit(-2)
             sys.exit(-1)
         sys.exit(0)
