@@ -222,7 +222,7 @@ def __do_download_file(
 
     class _DownloadListener(FileDownloadListener):
         download_invocation_count = 0
-        error: Exception = None
+        error: Optional[Exception] = None
 
         def on_file_download_progress(
             self, original_file_name: str, size: int, progress: float, kbps: float
