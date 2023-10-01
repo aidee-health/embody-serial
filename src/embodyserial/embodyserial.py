@@ -28,7 +28,7 @@ from embodycodec import types
 from serial.serialutil import SerialBase
 from serial.serialutil import SerialException
 
-import embodyserial.exceptions as embodyExceptions
+import embodyserial.exceptions as embodyexceptions
 from embodyserial.listeners import ConnectionListener
 from embodyserial.listeners import FileDownloadListener
 from embodyserial.listeners import MessageListener
@@ -363,11 +363,13 @@ class _ReaderThread(threading.Thread):
             logging.debug(f"Sending message: {uart}, encoded: {uart.encode().hex()}")
             self.__serial.write(uart.encode())
             if not self.__file_event.wait(timeout):
-                raise embodyExceptions.MissingResponseError("No file received within timeout")
+                raise embodyexceptions.MissingResponseError(
+                    "No file received within timeout"
+                )
             if self.__f.file_error:
                 raise self.__f.file_error
             if not self.__f.file_name:
-                raise embodyExceptions.MissingResponseError("No file received")
+                raise embodyexceptions.MissingResponseError("No file received")
             return self.__f.file_name
         except Exception as e:
             raise e
@@ -462,7 +464,7 @@ class _ReaderThread(threading.Thread):
                     time.sleep(0.005)
                 loop_count += 1
                 if f.file_timeout and now - start > f.file_timeout:
-                    raise embodyExceptions.TimeoutError(
+                    raise embodyexceptions.TimeoutError(
                         f"Reading file took too long. Read {f.file_size - remaining_size} bytes"
                     )
                 if f.file_delay > 0:
@@ -471,14 +473,14 @@ class _ReaderThread(threading.Thread):
                     if (
                         time.time() - now > 5
                     ):  # More than 5 seconds since we got anything from unit!
-                        raise embodyExceptions.TimeoutError(
+                        raise embodyexceptions.TimeoutError(
                             f"Inter-block timeout!. Read {f.file_size - remaining_size} bytes out of {f.file_size}"
                         )
             self.__serial.timeout = 5
             raw_crc_received = self.__serial.read(2)
             end = time.time()
             if not raw_crc_received or len(raw_crc_received) < 2:
-                f.file_error = embodyExceptions.CrcError("Missing/too short crc")
+                f.file_error = embodyexceptions.CrcError("Missing/too short crc")
             self.__async_notify_file_download_in_progress(
                 f,
                 f.file_size,
@@ -493,7 +495,7 @@ class _ReaderThread(threading.Thread):
             calculated_crc = crc.crc16(data=in_memory_buffer)
             if not crc_received == calculated_crc:
                 if not f.ignore_crc_error:
-                    raise embodyExceptions.CrcError(
+                    raise embodyexceptions.CrcError(
                         f"Invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}"
                     )
             tmp = tempfile.NamedTemporaryFile(delete=False)
@@ -504,7 +506,7 @@ class _ReaderThread(threading.Thread):
             self.__async_notify_file_download_completed(
                 f, round((f.file_size / 1024) / (end - start), 2)
             )
-        except embodyExceptions.CrcError as e:
+        except embodyexceptions.CrcError as e:
             if not f.ignore_crc_error:
                 f.file_error = e
         except Exception as e:

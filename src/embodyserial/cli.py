@@ -9,9 +9,9 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+import embodyserial.exceptions as embodyexceptions
 from embodyserial import __version__
 from embodyserial.embodyserial import EmbodySerial
-import embodyserial.exceptions as embodyExceptions
 from embodyserial.helpers import EmbodySendHelper
 from embodyserial.listeners import FileDownloadListener
 
@@ -120,9 +120,9 @@ def main(args=None):
         embody_serial.shutdown()
         if error:
             print(f"({type(error)}): {error}")
-            if isinstance(error, embodyExceptions.TimeoutError):
+            if isinstance(error, embodyexceptions.TimeoutError):
                 sys.exit(-3)
-            if isinstance(error, embodyExceptions.CrcError):
+            if isinstance(error, embodyexceptions.CrcError):
                 sys.exit(-2)
             sys.exit(-1)
         sys.exit(0)
