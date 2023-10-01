@@ -5,6 +5,7 @@ and subscribing for incoming messages from the device.
 """
 import concurrent.futures
 import logging
+import os
 import re
 import struct
 import sys
@@ -27,8 +28,7 @@ from embodycodec import types
 from serial.serialutil import SerialBase
 from serial.serialutil import SerialException
 
-from embodyserial.exceptions import CrcError
-from embodyserial.exceptions import MissingResponseError
+import embodyserial.exceptions as embodyexceptions
 from embodyserial.listeners import ConnectionListener
 from embodyserial.listeners import FileDownloadListener
 from embodyserial.listeners import MessageListener
@@ -74,6 +74,8 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             self.__serial = serial_instance
         else:
             self.__serial = serial.Serial(port=self.__port, baudrate=115200)
+            if os.name == "nt":  # sys.platform == 'win32':
+                self.__serial.set_buffer_size(rx_size=128 * 1024, tx_size=12800)
         self.__connected = True
         self.__sender = _MessageSender(self.__serial)
         self.__reader = _ReaderThread(serial_instance=self.__serial)
@@ -103,6 +105,8 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             if not self.__connected:
                 return
             self.__connected = False
+            self.__reader.stop()
+            self.__sender.shutdown()
             if self.__serial.is_open:
                 try:
                     self.__serial.reset_input_buffer()
@@ -116,8 +120,6 @@ class EmbodySerial(ConnectionListener, EmbodySender):
                     self.__serial.close()
                 except Exception as e:
                     logging.warn(f"Failed to close port: {e}")
-            self.__reader.stop()
-            self.__sender.shutdown()
 
     def on_connected(self, connected: bool) -> None:
         """Implement connection listener interface and handle disconnect events"""
@@ -340,7 +342,7 @@ class _ReaderThread(threading.Thread):
         size: int,
         download_listener: Optional[FileDownloadListener] = None,
         timeout: int = 300,
-        delay=0.0,
+        delay: float = 0.0,
         ignore_crc_error=False,
     ) -> str:
         """Set reader in file mode and read file."""
@@ -361,18 +363,19 @@ class _ReaderThread(threading.Thread):
             logging.debug(f"Sending message: {uart}, encoded: {uart.encode().hex()}")
             self.__serial.write(uart.encode())
             if not self.__file_event.wait(timeout):
-                raise MissingResponseError("No file received within timeout")
+                raise embodyexceptions.MissingResponseError(
+                    "No file received within timeout"
+                )
             if self.__f.file_error:
                 raise self.__f.file_error
             if not self.__f.file_name:
-                raise MissingResponseError("No file received")
+                raise embodyexceptions.MissingResponseError("No file received")
             return self.__f.file_name
         except Exception as e:
-            self.__async_notify_file_download_failed(f, e)
             raise e
         finally:
             if hasattr(self.__serial, "timeout") and self.__read_timeout:
-                self.__serial.timeout = self.__read_timeout
+                self.__serial.timeout = 20
             self.__reset_file_mode()
 
     def __reset_file_mode(self) -> None:
@@ -386,7 +389,8 @@ class _ReaderThread(threading.Thread):
             return
         self.alive = False
         if hasattr(self.__serial, "cancel_read"):
-            self.__serial.cancel_read()
+            if self.__serial.is_open:
+                self.__serial.cancel_read()
         self.__message_listener_executor.shutdown(wait=True, cancel_futures=False)
         self.__response_message_listener_executor.shutdown(
             wait=True, cancel_futures=False
@@ -429,43 +433,54 @@ class _ReaderThread(threading.Thread):
         self.__notify_connection_listeners(connected=False)
 
     def __read_file(self, first_bytes: bytes, f: _FileDownload) -> None:
-        buffer_size = 2048
+        self.__serial.timeout = 0
         remaining_size = f.file_size - len(first_bytes)
         start = time.time()
-        in_memory_buffer = bytearray(f.file_size)
-        in_memory_buffer[0 : len(first_bytes)] = first_bytes
+        last = start
+        in_memory_buffer = bytearray()
+        in_memory_buffer.extend(first_bytes)
         loop_count = 0
+        bytes_to_read = 16 * 1024
         try:
             while remaining_size > 0 and self.__serial.is_open:
-                bytes_to_read: Optional[int] = self.__serial.in_waiting
-                if not bytes_to_read or bytes_to_read <= 0:
-                    bytes_to_read = buffer_size
                 chunk = self.__serial.read(min(bytes_to_read, remaining_size))
-                if not chunk:
-                    raise MissingResponseError("File download failed")
-                curr_pos = f.file_size - remaining_size
-                curr_len = len(chunk)
-                in_memory_buffer[curr_pos : curr_pos + curr_len] = chunk
-                remaining_size -= curr_len
-                now = time.time()
-                if now == start:
-                    now += 1
-                if loop_count % 20 == 0:
-                    self.__async_notify_file_download_in_progress(
-                        f,
-                        f.file_size,
-                        round(((f.file_size - remaining_size) / f.file_size) * 100),
-                        round(((f.file_size - remaining_size) / 1024) / (now - start)),
-                    )
+                if chunk and len(chunk) > 0:
+                    curr_len = len(chunk)
+                    in_memory_buffer.extend(chunk)
+                    remaining_size -= curr_len
+                    now = time.time()
+                    # logging.warning(f"Loop {str(loop_count)} time {str(now-start)} chunk {str(curr_len)}", exc_info=False)
+                    if now > (last + 0.5):  # Update every 500ms
+                        self.__async_notify_file_download_in_progress(
+                            f,
+                            f.file_size,
+                            round(((f.file_size - remaining_size) / f.file_size) * 100),
+                            round(
+                                ((f.file_size - remaining_size) / 1024) / (now - start)
+                            ),
+                        )
+                        last = now
+                else:
+                    time.sleep(0.005)
                 loop_count += 1
                 if f.file_timeout and now - start > f.file_timeout:
-                    raise TimeoutError(
+                    raise embodyexceptions.TimeoutError(
                         f"Reading file took too long. Read {f.file_size - remaining_size} bytes"
                     )
                 if f.file_delay > 0:
                     time.sleep(f.file_delay)
+                else:
+                    if (
+                        time.time() - now > 5
+                    ):  # More than 5 seconds since we got anything from unit!
+                        raise embodyexceptions.TimeoutError(
+                            f"Inter-block timeout!. Read {f.file_size - remaining_size} bytes out of {f.file_size}"
+                        )
+            self.__serial.timeout = 5
             raw_crc_received = self.__serial.read(2)
             end = time.time()
+            if not raw_crc_received or len(raw_crc_received) < 2:
+                f.file_error = embodyexceptions.CrcError("Missing/too short crc")
             self.__async_notify_file_download_in_progress(
                 f,
                 f.file_size,
@@ -479,12 +494,10 @@ class _ReaderThread(threading.Thread):
             (crc_received,) = struct.unpack(">H", raw_crc_received)
             calculated_crc = crc.crc16(data=in_memory_buffer)
             if not crc_received == calculated_crc:
-                f.file_error = CrcError(
-                    f"Invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}"
-                )
                 if not f.ignore_crc_error:
-                    self.__async_notify_file_download_failed(f, f.file_error)
-                    return
+                    raise embodyexceptions.CrcError(
+                        f"Invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}"
+                    )
             tmp = tempfile.NamedTemporaryFile(delete=False)
             tmp.write(in_memory_buffer)
             tmp.flush()
@@ -493,10 +506,14 @@ class _ReaderThread(threading.Thread):
             self.__async_notify_file_download_completed(
                 f, round((f.file_size / 1024) / (end - start), 2)
             )
+        except embodyexceptions.CrcError as e:
+            if not f.ignore_crc_error:
+                f.file_error = e
         except Exception as e:
             f.file_error = e
-            self.__async_notify_file_download_failed(f, e)
         finally:
+            if f.file_error:
+                self.__async_notify_file_download_failed(f, f.file_error)
             self.__file_event.set()
 
     def __async_notify_file_download_in_progress(

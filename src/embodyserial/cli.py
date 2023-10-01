@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+import embodyserial.exceptions as embodyexceptions
 from embodyserial import __version__
 from embodyserial.embodyserial import EmbodySerial
 from embodyserial.helpers import EmbodySendHelper
@@ -37,6 +38,7 @@ def main(args=None):
     becomes sys.exit(main()).
     The __main__ entry point similarly wraps sys.exit().
     """
+    error = None
     if args is None:
         args = sys.argv[1:]
 
@@ -68,30 +70,30 @@ def main(args=None):
             __list_files(send_helper)
         elif parsed_args.download_file:
             __download_file(
-                parsed_args.download_file,
-                embody_serial,
-                send_helper,
-                parsed_args.ignore_crc_error,
-                parsed_args.output_folder,
-                parsed_args.delete,
+                file_name=parsed_args.download_file,
+                embody_serial=embody_serial,
+                send_helper=send_helper,
+                ignore_crc_error=parsed_args.ignore_crc_error,
+                output_folder=parsed_args.output_folder,
+                delete=parsed_args.delete,
             )
         elif parsed_args.download_file_with_delay:
             __download_file(
-                parsed_args.download_file_with_delay,
-                embody_serial,
-                send_helper,
-                0.01,
-                parsed_args.ignore_crc_error,
-                parsed_args.output_folder,
-                parsed_args.delete,
+                file_name=parsed_args.download_file_with_delay,
+                embody_serial=embody_serial,
+                send_helper=send_helper,
+                delay=0.01,
+                ignore_crc_error=parsed_args.ignore_crc_error,
+                output_folder=parsed_args.output_folder,
+                delete=parsed_args.delete,
             )
         elif parsed_args.download_files:
             __download_files(
-                embody_serial,
-                send_helper,
-                parsed_args.ignore_crc_error,
-                parsed_args.output_folder,
-                parsed_args.delete,
+                embody_serial=embody_serial,
+                send_helper=send_helper,
+                ignore_crc_error=parsed_args.ignore_crc_error,
+                output_folder=parsed_args.output_folder,
+                delete=parsed_args.delete,
             )
         elif parsed_args.delete_file:
             print(
@@ -108,12 +110,22 @@ def main(args=None):
             print(f"Rebooting device: {send_helper.reboot_device()}")
         else:
             pass
+    except KeyboardInterrupt as e:
+        print(f"Keyboard interrupt: {e}")
+        error = e
     except Exception as e:
         print(f"Error occurred: {e}")
-    except KeyboardInterrupt as ke:
-        print(f"Keyboard interrupt: {ke}")
+        error = e
     finally:
         embody_serial.shutdown()
+        if error:
+            print(f"({type(error)}): {error}")
+            if isinstance(error, embodyexceptions.TimeoutError):
+                sys.exit(-3)
+            if isinstance(error, embodyexceptions.CrcError):
+                sys.exit(-2)
+            sys.exit(-1)
+        sys.exit(0)
 
 
 def __get_all_attributes(send_helper):
@@ -210,14 +222,13 @@ def __do_download_file(
 
     class _DownloadListener(FileDownloadListener):
         download_invocation_count = 0
+        error: Optional[Exception] = None
 
         def on_file_download_progress(
             self, original_file_name: str, size: int, progress: float, kbps: float
         ) -> None:
             """Display progress in cli."""
-            if self.download_invocation_count % 10 == 0 or progress == 100:
-                _show_cli_progress_bar(progress, size, kbps)
-            self.download_invocation_count += 1
+            _show_cli_progress_bar(progress, size, kbps)
 
         def on_file_download_complete(
             self, original_file_name: str, path: str, kbps: float
@@ -229,7 +240,7 @@ def __do_download_file(
             self, original_file_name: str, error: Exception
         ) -> None:
             """Process file download failure."""
-            print(f" {original_file_name} failed to download: {error}")
+            pass
 
     listener = _DownloadListener()
     tmp_file = embody_serial.download_file(

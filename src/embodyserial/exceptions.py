@@ -24,3 +24,9 @@ class CrcError(Exception):
     """Error when invalid crc is received for message from device."""
 
     ...
+
+
+class TimeoutError(Exception):
+    """Error when invalid crc is received for message from device."""
+
+    ...
