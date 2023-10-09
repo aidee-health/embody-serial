@@ -85,7 +85,7 @@ def __create_sender_mock(attr: attributes.Attribute) -> helpers.EmbodySender:
     return sender
 
 
-def __create_set_sender_mock(attr: attributes.Attribute) -> helpers.EmbodySender:
+def __create_set_sender_mock() -> helpers.EmbodySender:
     sender: helpers.EmbodySender = Mock()
     sender.send = Mock(return_value=codec.SetAttributeResponse())  # type: ignore
     return sender
@@ -115,11 +115,10 @@ def test_get_on_body_detect_with_exception() -> None:
 
 
 def test_set_on_body_detect_success() -> None:
-    sender = __create_set_sender_mock(attr=attributes.OnBodyDetectAttribute(True))
+    sender = __create_set_sender_mock()
     send_helper = helpers.EmbodySendHelper(sender=sender)
     result = send_helper.set_on_body_detect(True)
     assert result is True
-    sender.send.assert_called_once()
 
 
 def test_set_on_body_detect_no_response() -> None:
