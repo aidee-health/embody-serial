@@ -19,7 +19,7 @@ Changelog = "https://github.com/aidee-health/embody-serial/releases"
 
 [tool.poetry.dependencies]
 python = ">=3.8,<4.0"
-embody-codec = ">=1.0.12"
+embody-codec = ">=1.0.27"
 pyserial = "^3.5"
 pytest = "^7.4.2"
 
