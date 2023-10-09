@@ -108,6 +108,12 @@ def main(args=None):
             print(f"Resetting device: {send_helper.reset_device()}")
         elif parsed_args.reboot:
             print(f"Rebooting device: {send_helper.reboot_device()}")
+        elif parsed_args.activate_on_body_detect:
+            print(f"Activating on body detect: {send_helper.set_on_body_detect(True)}")
+        elif parsed_args.deactivate_on_body_detect:
+            print(
+                f"Deactivating on body detect: {send_helper.set_on_body_detect(False)}"
+            )
         else:
             pass
     except KeyboardInterrupt as e:
@@ -341,6 +347,14 @@ def __get_parser():
     )
     parser.add_argument(
         "--reboot", help="Reboot device", action="store_true", default=None
+    )
+    parser.add_argument(
+        "--activate-on-body-detect", help="Activate on body detect", action="store_true"
+    )
+    parser.add_argument(
+        "--deactivate-on-body-detect",
+        help="Deactivate on body detect",
+        action="store_true",
     )
 
     parser.add_argument(
