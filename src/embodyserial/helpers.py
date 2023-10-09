@@ -203,6 +203,16 @@ class EmbodySendHelper:
         assert isinstance(response, codec.DeleteAllFilesResponse)
         return True
 
+    def set_on_body_detect(self, enable: bool) -> bool:
+        attr = attributes.OnBodyDetectAttribute(enable)
+        return self.__do_send_set_attribute_request(attr)
+
+    def get_on_body_detect(self) -> bool:
+        response_attribute = self.__do_send_get_attribute_request(
+            attributes.OnBodyDetectAttribute.attribute_id
+        )
+        return response_attribute.value
+
     def __do_send_get_attribute_request(
         self, attribute_id: int
     ) -> attributes.Attribute:

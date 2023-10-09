@@ -313,7 +313,7 @@ class _ReaderThread(threading.Thread):
         """Initialize thread."""
         super().__init__()
         self.daemon = True
-        self.setName("reader")
+        self.name = "reader"
         self.__serial = serial_instance
         self.__read_timeout: Optional[int] = None
         if hasattr(self.__serial, "timeout"):
