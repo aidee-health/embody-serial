@@ -67,7 +67,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             self.__port = serial_port
             logging.info(f"Using serial port {self.__port}")
         elif not serial_instance:
-            self.__port = EmbodySerial.__find_serial_port()
+            self.__port = EmbodySerial.find_first_serial_port()
             logging.info(f"Using serial port {self.__port}")
         self.__shutdown_lock = threading.Lock()
         if serial_instance:
@@ -179,11 +179,12 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         return None
 
     @staticmethod
-    def __find_serial_port() -> str:
-        """Find first matching serial port name."""
+    def find_serial_ports() -> list[str]:
+        """Find all matching serial port names."""
+        ports: list[str] = []
         all_available_ports = serial.tools.list_ports.comports()
         if not all_available_ports:
-            raise SerialException("No available serial ports")
+            return ports
 
         all_available_ports.sort(key=attrgetter("device"))
         for port in all_available_ports:
@@ -195,8 +196,17 @@ class EmbodySerial(ConnectionListener, EmbodySender):
                 continue
 
             if EmbodySerial.__port_is_alive(port):
-                return port.device
-        raise SerialException("No matching serial ports found")
+                ports.append(port.device)
+        return ports
+
+    @staticmethod
+    def find_first_serial_port() -> str:
+        """Find first matching serial port name."""
+        ports = EmbodySerial.find_serial_ports()
+        if not len(ports) > 0:
+            raise SerialException("No matching serial ports found")
+
+        return ports[0]
 
     @staticmethod
     def __port_is_alive(port: SerialBase) -> bool:
