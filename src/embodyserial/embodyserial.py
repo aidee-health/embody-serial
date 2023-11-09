@@ -481,8 +481,8 @@ class _ReaderThread(threading.Thread):
                     time.sleep(f.file_delay)
                 else:
                     if (
-                        time.time() - now > 5
-                    ):  # More than 5 seconds since we got anything from unit!
+                        time.time() - now > 15
+                    ):  # More than 15 seconds since we got anything from unit!
                         raise embodyexceptions.TimeoutError(
                             f"Inter-block timeout!. Read {f.file_size - remaining_size} bytes out of {f.file_size}"
                         )
