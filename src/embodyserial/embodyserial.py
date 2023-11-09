@@ -441,6 +441,8 @@ class _ReaderThread(threading.Thread):
                 logging.info(f"Exception reading from socket: {str(e)} - disconnecting")
                 break
         self.alive = False
+        self.__file_event.set()
+        self.__reset_file_mode()
         self.__notify_connection_listeners(connected=False)
 
     def __read_file(self, first_bytes: bytes, f: _FileDownload) -> None:
