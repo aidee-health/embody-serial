@@ -35,6 +35,9 @@ from embodyserial.listeners import MessageListener
 from embodyserial.listeners import ResponseMessageListener
 
 
+DEFAULT_READ_TIMEOUT = 1
+
+
 class EmbodySender(ABC):
     """Listener interface for being notified of incoming messages."""
 
@@ -73,7 +76,9 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         if serial_instance:
             self.__serial = serial_instance
         else:
-            self.__serial = serial.Serial(port=self.__port, baudrate=115200)
+            self.__serial = serial.Serial(
+                port=self.__port, baudrate=115200, timeout=DEFAULT_READ_TIMEOUT
+            )
             if os.name == "nt":  # sys.platform == 'win32':
                 self.__serial.set_buffer_size(rx_size=128 * 1024, tx_size=12800)
         self.__connected = True
@@ -356,8 +361,6 @@ class _ReaderThread(threading.Thread):
         ignore_crc_error=False,
     ) -> str:
         """Set reader in file mode and read file."""
-        if hasattr(self.__serial, "timeout"):
-            self.__serial.timeout = 10
         f = _FileDownload(
             file_size=size,
             file_timeout=timeout,
@@ -384,8 +387,6 @@ class _ReaderThread(threading.Thread):
         except Exception as e:
             raise e
         finally:
-            if hasattr(self.__serial, "timeout") and self.__read_timeout:
-                self.__serial.timeout = 20
             self.__reset_file_mode()
 
     def __reset_file_mode(self) -> None:
@@ -443,7 +444,8 @@ class _ReaderThread(threading.Thread):
         self.__notify_connection_listeners(connected=False)
 
     def __read_file(self, first_bytes: bytes, f: _FileDownload) -> None:
-        self.__serial.timeout = 0
+        if hasattr(self.__serial, "timeout"):
+            self.__serial.timeout = 5
         remaining_size = f.file_size - len(first_bytes)
         start = time.time()
         last = start
@@ -481,12 +483,13 @@ class _ReaderThread(threading.Thread):
                     time.sleep(f.file_delay)
                 else:
                     if (
-                        time.time() - now > 5
-                    ):  # More than 5 seconds since we got anything from unit!
+                        time.time() - now > 15
+                    ):  # More than 15 seconds since we got anything from unit!
                         raise embodyexceptions.TimeoutError(
                             f"Inter-block timeout!. Read {f.file_size - remaining_size} bytes out of {f.file_size}"
                         )
-            self.__serial.timeout = 5
+            if hasattr(self.__serial, "timeout"):
+                self.__serial.timeout = 5
             raw_crc_received = self.__serial.read(2)
             end = time.time()
             if not raw_crc_received or len(raw_crc_received) < 2:
@@ -524,6 +527,8 @@ class _ReaderThread(threading.Thread):
         finally:
             if f.file_error:
                 self.__async_notify_file_download_failed(f, f.file_error)
+            if hasattr(self.__serial, "timeout") and self.__read_timeout:
+                self.__serial.timeout = self.__read_timeout
             self.__file_event.set()
 
     def __async_notify_file_download_in_progress(
