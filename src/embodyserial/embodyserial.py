@@ -167,6 +167,9 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         delay: float = 0.0,
     ) -> Optional[str]:
         for retry in range(1, retries + 1):
+            if not self.__connected:
+                logging.warn("Disconnected, aborting download")
+                return None
             try:
                 stored_file = self.download_file(
                     file_name, file_size, listener, timeout, delay
