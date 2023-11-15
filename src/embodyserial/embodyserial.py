@@ -37,7 +37,6 @@ from embodyserial.listeners import ResponseMessageListener
 
 BAUD_RATE = 115200
 DEFAULT_READ_TIMEOUT = 5
-FILE_READ_TIMEOUT = 0.5
 FILE_READ_CHUNK_SIZE = 512
 FILE_READ_INTER_BLOCK_TIMEOUT = 5
 WINDOWS_RX_BUFFER = 256 * 1024
@@ -85,7 +84,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             self.__serial = serial.Serial(
                 port=self.__port, baudrate=BAUD_RATE, timeout=DEFAULT_READ_TIMEOUT
             )
-            if os.name == "nt":
+            if os.name == "nt" and WINDOWS_RX_BUFFER and WINDOWS_TX_BUFFER:
                 buffer_set = self.__serial.set_buffer_size(
                     rx_size=WINDOWS_RX_BUFFER, tx_size=WINDOWS_TX_BUFFER
                 )
@@ -457,7 +456,6 @@ class _ReaderThread(threading.Thread):
         self.__notify_connection_listeners(connected=False)
 
     def __read_file(self, first_bytes: bytes, f: _FileDownload) -> None:
-        self.__serial.timeout = FILE_READ_TIMEOUT
         remaining_size = f.file_size - len(first_bytes)
         start = time.time()
         last = start
@@ -536,7 +534,6 @@ class _ReaderThread(threading.Thread):
         finally:
             if f.file_error:
                 self.__async_notify_file_download_failed(f, f.file_error)
-            self.__serial.timeout = DEFAULT_READ_TIMEOUT
             self.__file_event.set()
 
     def __async_notify_file_download_in_progress(
