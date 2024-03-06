@@ -1,4 +1,5 @@
 """Default execution entry point if running the package via python -m."""
+
 import sys
 
 from embodyserial import cli

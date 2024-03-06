@@ -18,8 +18,8 @@ classifiers = [
 Changelog = "https://github.com/aidee-health/embody-serial/releases"
 
 [tool.poetry.dependencies]
-python = ">=3.8,<4.0"
-embody-codec = ">=1.0.27"
+python = ">=3.9,<4.0"
+embody-codec = ">=1.0.28"
 pyserial = "^3.5"
 pytest = "^7.4.2"
 
@@ -28,7 +28,7 @@ Pygments = ">=2.10.0"
 black = ">=21.10b0"
 coverage = {extras = ["toml"], version = ">=6.2"}
 darglint = ">=1.8.1"
-flake8 = ">=4.0.1,<5.0.0"
+flake8 = ">=7.0.0"
 flake8-bandit = ">=2.1.2"
 flake8-bugbear = ">=21.9.2"
 flake8-docstrings = ">=1.6.0"

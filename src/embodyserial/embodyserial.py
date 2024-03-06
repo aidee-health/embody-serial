@@ -3,6 +3,7 @@
 Allows for both sending messages synchronously and asynchronously, receiving response messages
 and subscribing for incoming messages from the device.
 """
+
 import concurrent.futures
 import logging
 import os
