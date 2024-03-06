@@ -1,4 +1,5 @@
 """Specific exceptions for package."""
+
 from embodycodec import codec
 
 

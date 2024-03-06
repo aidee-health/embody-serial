@@ -1,4 +1,5 @@
 """Initialize the embodyserial package."""
+
 import importlib.metadata
 
 

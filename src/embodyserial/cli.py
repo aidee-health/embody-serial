@@ -2,6 +2,7 @@
 
 Parse command line arguments, invoke embody device.
 """
+
 import argparse
 import logging
 import shutil
