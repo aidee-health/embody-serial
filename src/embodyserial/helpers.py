@@ -100,6 +100,13 @@ class EmbodySendHelper:
         )
         return response_attribute.value
 
+    def get_recording_state(self) -> bool:
+        """Name of attribute makes no sence but is correct..."""
+        response_attribute = self.__do_send_get_attribute_request(
+            attributes.MeasurementDeactivatedAttribute.attribute_id
+        )
+        return response_attribute.value
+
     def get_files(self) -> list[tuple[str, int]]:
         """Get a list of tuples with file name and file size."""
         response = self.__sender.send(msg=codec.ListFiles(), timeout=120)
