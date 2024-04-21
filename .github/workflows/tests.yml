@@ -52,6 +52,8 @@ jobs:
 
       - name: Install Poetry
         run: |
+          echo "Current directory is: $PWD"
+          echo "Contents of the current directory:" && ls -la
           pipx install --pip-args=--constraint=.github/workflows/constraints.txt poetry
           poetry --version
 
