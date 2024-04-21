@@ -55,7 +55,7 @@ jobs:
           echo "Current directory is: $PWD"
           echo "Contents of the current directory:" && ls -la
           echo "Contents of the .github/workflows directory:" && ls -la .github/workflows
-          pipx install --pip-args=--constraint=.github/workflows/constraints.txt poetry
+          pipx install --pip-args='--constraint=.github/workflows/constraints.txt' poetry
           poetry --version
 
       - name: Install Nox
