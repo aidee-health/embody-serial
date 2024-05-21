@@ -152,7 +152,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         timeout: int = 300,
         delay: float = 0.0,
         ignore_crc_error=False,
-    ) -> str:
+    ) -> Optional[str]:
         """Download file from device and write to temporary file.
 
         Raises:
