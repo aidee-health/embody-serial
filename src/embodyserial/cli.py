@@ -311,7 +311,10 @@ def __get_parser():
         "--download-files", help="Download all files", action="store_true", default=None
     )
     parser.add_argument(
-        "--ignore-crc-error", help="Ignore CRC errors", action="store_true", default=False
+        "--ignore-crc-error",
+        help="Ignore CRC errors",
+        action="store_true",
+        default=False
     )
     parser.add_argument(
         "--output-folder",
