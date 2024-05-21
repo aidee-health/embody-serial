@@ -519,6 +519,8 @@ class _ReaderThread(threading.Thread):
                     raise embodyexceptions.CrcError(
                         f"Invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}"
                     )
+                else:
+                    logging.warning(f"IGNORING invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}")
             tmp = tempfile.NamedTemporaryFile(delete=False)
             tmp.write(in_memory_buffer)
             tmp.flush()
