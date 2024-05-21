@@ -520,7 +520,9 @@ class _ReaderThread(threading.Thread):
                         f"Invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}"
                     )
                 else:
-                    logging.warning(f"IGNORING invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}")
+                    logging.warning(
+                        f"IGNORING invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}"
+                    )
             tmp = tempfile.NamedTemporaryFile(delete=False)
             tmp.write(in_memory_buffer)
             tmp.flush()
