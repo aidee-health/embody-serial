@@ -152,7 +152,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         timeout: int = 300,
         delay: float = 0.0,
         ignore_crc_error=False,
-    ) -> str:
+    ) -> Optional[str]:
         """Download file from device and write to temporary file.
 
         Raises:
@@ -518,6 +518,10 @@ class _ReaderThread(threading.Thread):
                 if not f.ignore_crc_error:
                     raise embodyexceptions.CrcError(
                         f"Invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}"
+                    )
+                else:
+                    logging.warning(
+                        f"IGNORING invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}"
                     )
             tmp = tempfile.NamedTemporaryFile(delete=False)
             tmp.write(in_memory_buffer)

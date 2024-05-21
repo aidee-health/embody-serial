@@ -77,6 +77,7 @@ def main(args=None):
                 ignore_crc_error=parsed_args.ignore_crc_error,
                 output_folder=parsed_args.output_folder,
                 delete=parsed_args.delete,
+                retries=0 if parsed_args.ignore_crc_error else parsed_args.retries,
             )
         elif parsed_args.download_file_with_delay:
             __download_file(
@@ -87,6 +88,7 @@ def main(args=None):
                 ignore_crc_error=parsed_args.ignore_crc_error,
                 output_folder=parsed_args.output_folder,
                 delete=parsed_args.delete,
+                retries=0 if parsed_args.ignore_crc_error else parsed_args.retries,
             )
         elif parsed_args.download_files:
             __download_files(
@@ -95,6 +97,7 @@ def main(args=None):
                 ignore_crc_error=parsed_args.ignore_crc_error,
                 output_folder=parsed_args.output_folder,
                 delete=parsed_args.delete,
+                retries=0 if parsed_args.ignore_crc_error else parsed_args.retries,
             )
         elif parsed_args.delete_file:
             print(
@@ -160,6 +163,7 @@ def __download_files(
     ignore_crc_error: bool = False,
     output_folder: Optional[Path] = None,
     delete: bool = False,
+    retries: int = 0,
 ):
     files = send_helper.get_files()
     if len(files) == 0:
@@ -174,6 +178,7 @@ def __download_files(
             ignore_crc_error=ignore_crc_error,
             output_folder=output_folder,
             delete=delete,
+            retries=retries,
         )
 
 
@@ -185,6 +190,7 @@ def __download_file(
     ignore_crc_error: bool = False,
     output_folder: Optional[Path] = None,
     delete: bool = False,
+    retries: int = 0,
 ):
     filtered_files: list[tuple[str, int]] = [
         tup for tup in send_helper.get_files() if tup[0] == file_name
@@ -200,6 +206,7 @@ def __download_file(
         ignore_crc_error,
         output_folder,
         delete,
+        retries=retries,
     )
 
 
@@ -224,6 +231,7 @@ def __do_download_file(
     ignore_crc_error: bool = False,
     output_folder: Optional[Path] = None,
     delete: bool = False,
+    retries: int = 0,
 ):
     print(f"Downloading: {file[0]}")
 
@@ -250,13 +258,22 @@ def __do_download_file(
             pass
 
     listener = _DownloadListener()
-    tmp_file = embody_serial.download_file(
-        file_name=file[0],
-        size=file[1],
-        download_listener=listener,
-        delay=delay,
-        ignore_crc_error=ignore_crc_error,
-    )
+    if retries == 0:
+        tmp_file = embody_serial.download_file(
+            file_name=file[0],
+            size=file[1],
+            download_listener=listener,
+            delay=delay,
+            ignore_crc_error=ignore_crc_error,
+        )
+    else:
+        tmp_file = embody_serial.download_file_with_retries(
+            file_name=file[0],
+            file_size=file[1],
+            listener=listener,
+            delay=delay,
+            retries=retries,
+        )
     if output_folder and tmp_file:
         if not output_folder.exists():
             output_folder.mkdir(parents=True)
@@ -311,7 +328,13 @@ def __get_parser():
         "--download-files", help="Download all files", action="store_true", default=None
     )
     parser.add_argument(
-        "--ignore-crc-error", help="Ignore CRC errors", action="store_false"
+        "--ignore-crc-error",
+        help="Ignore CRC errors",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "--retries", help="Number of download retries", type=int, default=3
     )
     parser.add_argument(
         "--output-folder",
