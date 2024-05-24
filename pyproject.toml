@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "embody-serial"
-version = "1.0.30"
+version = "1.0.31"
 description = "Communicate with the embody device over a serial port"
 authors = ["Aidee Health AS <hello@aidee.io>"]
 license = "MIT"
@@ -19,7 +19,7 @@ Changelog = "https://github.com/aidee-health/embody-serial/releases"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4.0"
-embody-codec = ">=1.0.28"
+embody-codec = ">=1.0.29"
 pyserial = "^3.5"
 pytest = "^7.4.2"
 
