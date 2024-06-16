@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "embody-serial"
-version = "1.0.31"
+version = "1.0.32"
 description = "Communicate with the embody device over a serial port"
 authors = ["Aidee Health AS <hello@aidee.io>"]
 license = "MIT"
@@ -40,7 +40,6 @@ pep8-naming = ">=0.12.1"
 pre-commit = ">=2.16.0"
 pre-commit-hooks = ">=4.1.0"
 pyupgrade = ">=2.29.1"
-safety = ">=1.10.3"
 sphinx = ">=4.3.2"
 sphinx-autobuild = ">=2021.3.14"
 sphinx-click = ">=3.0.2"
