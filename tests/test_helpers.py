@@ -41,7 +41,7 @@ def test_get_serial_no_success() -> None:
     sender = __create_sender_mock(attr=attributes.SerialNoAttribute(12345678))
     send_helper = helpers.EmbodySendHelper(sender=sender)
     serial_no = send_helper.get_serial_no()
-    assert serial_no == "0000000000bc614e"
+    assert serial_no == "0000000000BC614E"
 
 
 def test_get_battery_level() -> None:
