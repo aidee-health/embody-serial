@@ -425,13 +425,13 @@ files = [
 
 [[package]]
 name = "embody-codec"
-version = "1.0.30"
+version = "1.0.31"
 description = "Embody Codec"
 optional = false
 python-versions = "<4.0,>=3.9"
 files = [
-    {file = "embody_codec-1.0.30-py3-none-any.whl", hash = "sha256:b1988b011a66d31b9ab98f3724da258d9fdf71cd40f14d943b69efd7cd67ec82"},
-    {file = "embody_codec-1.0.30.tar.gz", hash = "sha256:252f7f7629b94aa043ddd09055f4ee657a227f01b2408fab9ac73885db145255"},
+    {file = "embody_codec-1.0.31-py3-none-any.whl", hash = "sha256:996d1319996a9b107bf5f2edc2280f7234ca9e28e5a7b3ac6924b1e53291f669"},
+    {file = "embody_codec-1.0.31.tar.gz", hash = "sha256:f6d808f7f3277c7bceab994a319d9401b0b7b7569a7380b38e05ae3364fa5e33"},
 ]
 
 [[package]]
