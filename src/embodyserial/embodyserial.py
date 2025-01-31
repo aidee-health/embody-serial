@@ -467,11 +467,11 @@ class _ReaderThread(threading.Thread):
         try:
             while remaining_size > 0 and self.__serial.is_open:
                 chunk = self.__serial.read(min(bytes_to_read, remaining_size))
+                now = time.time()
                 if chunk and len(chunk) > 0:
                     curr_len = len(chunk)
                     in_memory_buffer.extend(chunk)
                     remaining_size -= curr_len
-                    now = time.time()
                     # logging.warning(f"Loop {str(loop_count)} time {str(now-start)} chunk {str(curr_len)}", exc_info=False)
                     if now > (last + 0.5):  # Update every 500ms
                         self.__async_notify_file_download_in_progress(
@@ -493,7 +493,7 @@ class _ReaderThread(threading.Thread):
                 if f.file_delay > 0:
                     time.sleep(f.file_delay)
                 else:
-                    if time.time() - now > FILE_READ_INTER_BLOCK_TIMEOUT:
+                    if time.time() - last > FILE_READ_INTER_BLOCK_TIMEOUT:
                         raise embodyexceptions.TimeoutError(
                             f"Inter-block timeout!. Read {f.file_size - remaining_size} "
                             f"bytes out of {f.file_size}. Remaining {remaining_size+2} bytes"
