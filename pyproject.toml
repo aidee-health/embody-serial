@@ -48,6 +48,9 @@ xdoctest = {extras = ["colors"], version = ">=0.15.10"}
 myst-parser = {version = ">=0.16.1"}
 memory_profiler = ">=0.61.0"
 
+[tool.poetry.requires-plugins]
+poetry-plugin-export = ">=1.8"
+
 [tool.poetry.scripts]
 embody-serial = "embodyserial.cli:main"
 
