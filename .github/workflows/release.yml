@@ -33,6 +33,7 @@ jobs:
       - name: Install Poetry
         run: |
           pip install --constraint=${{ github.workspace }}/.github/workflows/constraints.txt poetry
+          pip install --constraint=${{ github.workspace }}/.github/workflows/constraints.txt poetry-plugin-export
           poetry --version
 
       - name: Check if there is a parent commit
