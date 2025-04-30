@@ -549,20 +549,20 @@ pydocstyle = ">=2.1"
 
 [[package]]
 name = "flake8-rst-docstrings"
-version = "0.3.0"
+version = "0.3.1"
 description = "Python docstring reStructuredText (RST) validator for flake8"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 groups = ["dev"]
 files = [
-    {file = "flake8-rst-docstrings-0.3.0.tar.gz", hash = "sha256:d1ce22b4bd37b73cd86b8d980e946ef198cfcc18ed82fedb674ceaa2f8d1afa4"},
-    {file = "flake8_rst_docstrings-0.3.0-py3-none-any.whl", hash = "sha256:f8c3c6892ff402292651c31983a38da082480ad3ba253743de52989bdc84ca1c"},
+    {file = "flake8_rst_docstrings-0.3.1-py3-none-any.whl", hash = "sha256:ed831afca7ee47851e2162d5fa726b823b446fd46085c2164d7979ae5d9a96d7"},
+    {file = "flake8_rst_docstrings-0.3.1.tar.gz", hash = "sha256:26dcc1338caf985990677696a8a6a274f73a0c6845b85f567befd3b648db78e2"},
 ]
 
 [package.dependencies]
 flake8 = ">=3"
 pygments = "*"
-restructuredtext-lint = "*"
+restructuredtext_lint = "*"
 
 [package.extras]
 develop = ["build", "twine"]
@@ -646,6 +646,7 @@ description = "Read metadata from Python packages"
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
+markers = "python_version < \"3.10\""
 files = [
     {file = "importlib_metadata-8.7.0-py3-none-any.whl", hash = "sha256:e5dd1551894c77868a30651cef00984d50e1002d06942a7101d34870c5f02afd"},
     {file = "importlib_metadata-8.7.0.tar.gz", hash = "sha256:d13b81ad223b890aa16c5471f2ac3056cf76c5f10f82d6f9292f0b415f389000"},
@@ -2054,6 +2055,7 @@ description = "Backport of pathlib-compatible object wrapper for zip files"
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
+markers = "python_version < \"3.10\""
 files = [
     {file = "zipp-3.21.0-py3-none-any.whl", hash = "sha256:ac1bbe05fd2991f160ebce24ffbac5f6d11d83dc90891255885223d42b3cd931"},
     {file = "zipp-3.21.0.tar.gz", hash = "sha256:2c9958f6430a2040341a52eb608ed6dd93ef4392e02ffe219417c1b28b5dd1f4"},
