@@ -646,6 +646,7 @@ description = "Read metadata from Python packages"
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
+markers = "python_version < \"3.10\""
 files = [
     {file = "importlib_metadata-8.7.0-py3-none-any.whl", hash = "sha256:e5dd1551894c77868a30651cef00984d50e1002d06942a7101d34870c5f02afd"},
     {file = "importlib_metadata-8.7.0.tar.gz", hash = "sha256:d13b81ad223b890aa16c5471f2ac3056cf76c5f10f82d6f9292f0b415f389000"},
@@ -1010,14 +1011,14 @@ setuptools = "*"
 
 [[package]]
 name = "pep8-naming"
-version = "0.14.1"
+version = "0.15.0"
 description = "Check PEP-8 naming conventions, plugin for flake8"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "pep8-naming-0.14.1.tar.gz", hash = "sha256:1ef228ae80875557eb6c1549deafed4dabbf3261cfcafa12f773fe0db9be8a36"},
-    {file = "pep8_naming-0.14.1-py3-none-any.whl", hash = "sha256:63f514fc777d715f935faf185dedd679ab99526a7f2f503abb61587877f7b1c5"},
+    {file = "pep8_naming-0.15.0-py3-none-any.whl", hash = "sha256:2ce36937ff0421d871a634f4a0c2af06f994fe22c9055ea9813ca72d562754da"},
+    {file = "pep8_naming-0.15.0.tar.gz", hash = "sha256:a637ee5144f7585c800b1fc6eeb996fa35a2ef0f2690880a9e1b29cb9f6e8359"},
 ]
 
 [package.dependencies]
@@ -2054,6 +2055,7 @@ description = "Backport of pathlib-compatible object wrapper for zip files"
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
+markers = "python_version < \"3.10\""
 files = [
     {file = "zipp-3.21.0-py3-none-any.whl", hash = "sha256:ac1bbe05fd2991f160ebce24ffbac5f6d11d83dc90891255885223d42b3cd931"},
     {file = "zipp-3.21.0.tar.gz", hash = "sha256:2c9958f6430a2040341a52eb608ed6dd93ef4392e02ffe219417c1b28b5dd1f4"},
