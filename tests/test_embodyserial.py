@@ -2,7 +2,6 @@
 
 import threading
 import time
-from typing import Optional
 
 from embodycodec import codec
 from serial.serialutil import SerialBase
@@ -23,7 +22,7 @@ def test_send_receive_sync() -> None:
 class DummySerial(SerialBase):
     """Serial port implementation for testing."""
 
-    def __init__(self, response_data: Optional[bytes] = None) -> None:
+    def __init__(self, response_data: bytes | None = None) -> None:
         self.__response_data_available = threading.Event()
         self.__response_data = response_data
         self.__response_data_pos = 0
@@ -40,14 +39,10 @@ class DummySerial(SerialBase):
     def read(self, size=1):
         """Uses __response_data buffer to return requested data."""
         time.sleep(0.5)
-        if not self.__response_data or self.__response_data_pos + size > len(
-            self.__response_data
-        ):
+        if not self.__response_data or self.__response_data_pos + size > len(self.__response_data):
             self.__response_data_available.clear()
             self.__response_data_available.wait()
-        part = self.__response_data[
-            self.__response_data_pos : self.__response_data_pos + size
-        ]
+        part = self.__response_data[self.__response_data_pos : self.__response_data_pos + size]
         self.__response_data_pos += size
         return part
 

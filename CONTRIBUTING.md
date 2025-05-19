@@ -8,6 +8,7 @@ Here is a list of important resources for contributors:
 
 - [Source Code]
 - [Issue Tracker]
+- [Code of Conduct]
 
 [mit license]: https://opensource.org/licenses/MIT
 [source code]: https://github.com/aidee-health/embody-serial
@@ -34,41 +35,54 @@ Request features on the [Issue Tracker].
 
 ## How to set up your development environment
 
-You need Python 3.9+ and the following tools:
+You need Python 3.11+ and the following tools:
 
-- [Poetry]
-- [Nox]
-- [nox-poetry]
+- [UV] - Fast Python package installer and resolver
+- [tox] - Standardized testing in Python
 
 Install the package with development requirements:
 
 ```console
-$ poetry install
+$ make install
 ```
 
-[poetry]: https://python-poetry.org/
-[nox]: https://nox.thea.codes/
-[nox-poetry]: https://nox-poetry.readthedocs.io/
+This will set up your environment using UV and install pre-commit hooks.
+
+You can now run an interactive Python session,
+or the command-line interface:
+
+```console
+$ uv run python
+$ uv run embody-serial
+```
+
+[uv]: https://github.com/astral-sh/uv
+[tox]: https://tox.wiki/
 
 ## How to test the project
 
-Run the full test suite:
+Run the full test suite using the Makefile:
 
 ```console
-$ nox
+$ make test
 ```
 
-List the available Nox sessions:
+For more complex testing across multiple Python versions, use tox:
 
 ```console
-$ nox --list-sessions
+$ tox
 ```
 
-You can also run a specific Nox session.
-For example, invoke the unit test suite like this:
+List the available tox environments:
 
 ```console
-$ nox --session=tests
+$ tox --listenvs
+```
+
+You can also run a specific tox environment:
+
+```console
+$ tox -e py312
 ```
 
 Unit tests are located in the _tests_ directory,
@@ -82,20 +96,54 @@ Open a [pull request] to submit changes to this project.
 
 Your pull request needs to meet the following guidelines for acceptance:
 
-- The Nox test suite must pass without errors and warnings.
-- Include unit tests. This project maintains ~ 100% code coverage.
+- The test suite must pass without errors and warnings across all supported Python versions.
+- Include unit tests. This project maintains high code coverage.
 - If your changes add functionality, update the documentation accordingly.
 
 Feel free to submit early, though—we can always iterate on this.
 
-To run linting and code formatting checks before committing your change, you can install pre-commit as a Git hook by running the following command:
+To run linting and code formatting checks before committing your change, you can use:
 
 ```console
-$ nox --session=pre-commit -- install
+$ make check
 ```
+
+Pre-commit hooks are installed automatically when you run `make install`, ensuring code quality checks run before each commit.
 
 It is recommended to open an issue before starting work on anything.
 This will allow a chance to talk it over with the owners and validate your approach.
+
+## Using the Makefile
+
+This project includes a Makefile with convenient shortcuts for common development tasks:
+
+| Command            | Description                                                     |
+| ------------------ | --------------------------------------------------------------- |
+| `make install`     | Set up the development environment and install pre-commit hooks |
+| `make check`       | Run code quality checks (linting, formatting)                   |
+| `make test`        | Run the test suite with pytest                                  |
+| `make build`       | Build the package (wheel and sdist)                             |
+| `make clean-build` | Remove build artifacts                                          |
+| `make help`        | Display all available commands                                  |
+
+## Development Workflow
+
+```mermaid
+flowchart TD
+    A[Clone Repository] --> B[make install]
+    B --> C[Write Code]
+    C --> D[make check]
+    D -- Passes --> E[make test]
+    D -- Fails --> C
+    E -- Passes --> F[git commit]
+    E -- Fails --> C
+    F --> G[git push]
+    G --> H[Open Pull Request]
+
+    style C fill:#f9f,stroke:#333,stroke-width:2px
+    style F fill:#bbf,stroke:#333,stroke-width:2px
+    style H fill:#bfb,stroke:#333,stroke-width:2px
+```
 
 ## Resources
 
@@ -110,3 +158,5 @@ This will allow a chance to talk it over with the owners and validate your appro
 [pull request]: https://github.com/aidee-health/embody-serial/pulls
 
 <!-- github-only -->
+
+[code of conduct]: CODE_OF_CONDUCT.md

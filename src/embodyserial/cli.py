@@ -8,7 +8,6 @@ import logging
 import shutil
 import sys
 from pathlib import Path
-from typing import Optional
 
 import embodyserial.exceptions as embodyexceptions
 from embodyserial import __version__
@@ -52,7 +51,7 @@ def main(args=None):
         embody_serial = EmbodySerial(serial_port=parsed_args.device)
     except Exception as e:
         print(f"Connection error: {e}")
-        exit(-1)
+        sys.exit(-1)
 
     send_helper = EmbodySendHelper(sender=embody_serial)
     try:
@@ -64,9 +63,7 @@ def main(args=None):
             print(f"Set current time: {send_helper.set_current_timestamp()}")
             print(f"New current time is: {send_helper.get_current_time()}")
         elif parsed_args.set_trace_level:
-            print(
-                f"Trace level set: {send_helper.set_trace_level(parsed_args.set_trace_level)}"
-            )
+            print(f"Trace level set: {send_helper.set_trace_level(parsed_args.set_trace_level)}")
         elif parsed_args.list_files:
             __list_files(send_helper)
         elif parsed_args.download_file:
@@ -101,8 +98,7 @@ def main(args=None):
             )
         elif parsed_args.delete_file:
             print(
-                f"Delete file {parsed_args.delete_file}:"
-                f" {send_helper.delete_file(file_name=parsed_args.delete_file)}"
+                f"Delete file {parsed_args.delete_file}: {send_helper.delete_file(file_name=parsed_args.delete_file)}"
             )
         elif parsed_args.delete_files:
             print(f"Delete files: {send_helper.delete_all_files()}")
@@ -115,9 +111,7 @@ def main(args=None):
         elif parsed_args.activate_on_body_detect:
             print(f"Activating on body detect: {send_helper.set_on_body_detect(True)}")
         elif parsed_args.deactivate_on_body_detect:
-            print(
-                f"Deactivating on body detect: {send_helper.set_on_body_detect(False)}"
-            )
+            print(f"Deactivating on body detect: {send_helper.set_on_body_detect(False)}")
         else:
             pass
     except KeyboardInterrupt as e:
@@ -152,7 +146,7 @@ def __list_files(send_helper):
     files = send_helper.get_files()
     if len(files) > 0:
         for name, size in files:
-            print(f"{name} ({round(size/1024)}KB)")
+            print(f"{name} ({round(size / 1024)}KB)")
     else:
         print("[]")
 
@@ -161,7 +155,7 @@ def __download_files(
     embody_serial: EmbodySerial,
     send_helper: EmbodySendHelper,
     ignore_crc_error: bool = False,
-    output_folder: Optional[Path] = None,
+    output_folder: Path | None = None,
     delete: bool = False,
     retries: int = 0,
 ):
@@ -188,13 +182,11 @@ def __download_file(
     send_helper: EmbodySendHelper,
     delay: float = 0.0,
     ignore_crc_error: bool = False,
-    output_folder: Optional[Path] = None,
+    output_folder: Path | None = None,
     delete: bool = False,
     retries: int = 0,
 ):
-    filtered_files: list[tuple[str, int]] = [
-        tup for tup in send_helper.get_files() if tup[0] == file_name
-    ]
+    filtered_files: list[tuple[str, int]] = [tup for tup in send_helper.get_files() if tup[0] == file_name]
     if not filtered_files or len(filtered_files) == 0:
         print(f"Unknown file name {file_name}")
         return
@@ -213,13 +205,9 @@ def __download_file(
 def _show_cli_progress_bar(progress: float, total: int, kbps: float):
     bar_length = 20
     percent = progress / 100
-    hashes = "#" * int(round(percent * bar_length))
+    hashes = "#" * round(percent * bar_length)
     spaces = " " * (bar_length - len(hashes))
-    sys.stdout.write(
-        "\rProgress: [{}] {}% ({} kbps)".format(
-            hashes + spaces, int(round(percent * 100)), int(round(kbps))
-        )
-    )
+    sys.stdout.write(f"\rProgress: [{hashes + spaces}] {round(percent * 100)}% ({round(kbps)} kbps)")
     sys.stdout.flush()
 
 
@@ -229,7 +217,7 @@ def __do_download_file(
     send_helper: EmbodySendHelper,
     delay: float = 0.0,
     ignore_crc_error: bool = False,
-    output_folder: Optional[Path] = None,
+    output_folder: Path | None = None,
     delete: bool = False,
     retries: int = 0,
 ):
@@ -237,23 +225,17 @@ def __do_download_file(
 
     class _DownloadListener(FileDownloadListener):
         download_invocation_count = 0
-        error: Optional[Exception] = None
+        error: Exception | None = None
 
-        def on_file_download_progress(
-            self, original_file_name: str, size: int, progress: float, kbps: float
-        ) -> None:
+        def on_file_download_progress(self, original_file_name: str, size: int, progress: float, kbps: float) -> None:
             """Display progress in cli."""
             _show_cli_progress_bar(progress, size, kbps)
 
-        def on_file_download_complete(
-            self, original_file_name: str, path: str, kbps: float
-        ) -> None:
+        def on_file_download_complete(self, original_file_name: str, path: str, kbps: float) -> None:
             """Process file download completion."""
             print(f" {original_file_name} downloaded to {path} (@{round(kbps)} kbps)")
 
-        def on_file_download_failed(
-            self, original_file_name: str, error: Exception
-        ) -> None:
+        def on_file_download_failed(self, original_file_name: str, error: Exception) -> None:
             """Process file download failure."""
             pass
 
@@ -306,36 +288,24 @@ def __get_parser():
         default="WARNING",
     )
     parser.add_argument("--device", help="Serial port name", default=None)
-    parser.add_argument(
-        "--get", help="Get attribute", choices=get_attributes_dict.keys(), default=None
-    )
-    parser.add_argument(
-        "--get-all", help="Get all attributes", action="store_true", default=None
-    )
-    parser.add_argument(
-        "--set-time", help="Set time (to now)", action="store_true", default=None
-    )
-    parser.add_argument(
-        "--download-file", help="Download specified file", type=str, default=None
-    )
+    parser.add_argument("--get", help="Get attribute", choices=get_attributes_dict.keys(), default=None)
+    parser.add_argument("--get-all", help="Get all attributes", action="store_true", default=None)
+    parser.add_argument("--set-time", help="Set time (to now)", action="store_true", default=None)
+    parser.add_argument("--download-file", help="Download specified file", type=str, default=None)
     parser.add_argument(
         "--download-file-with-delay",
         help="Download specified file with simulated delay",
         type=str,
         default=None,
     )
-    parser.add_argument(
-        "--download-files", help="Download all files", action="store_true", default=None
-    )
+    parser.add_argument("--download-files", help="Download all files", action="store_true", default=None)
     parser.add_argument(
         "--ignore-crc-error",
         help="Ignore CRC errors",
         action="store_true",
         default=False,
     )
-    parser.add_argument(
-        "--retries", help="Number of download retries", type=int, default=3
-    )
+    parser.add_argument("--retries", help="Number of download retries", type=int, default=3)
     parser.add_argument(
         "--output-folder",
         help="Download file(s) to specified folder",
@@ -348,33 +318,19 @@ def __get_parser():
         action="store_true",
         default=None,
     )
-    parser.add_argument(
-        "--set-trace-level", help="Set trace level", type=int, default=None
-    )
+    parser.add_argument("--set-trace-level", help="Set trace level", type=int, default=None)
     parser.add_argument(
         "--list-files",
         help="List all files on device",
         action="store_true",
         default=None,
     )
-    parser.add_argument(
-        "--delete-file", help="Delete specified file", type=str, default=None
-    )
-    parser.add_argument(
-        "--delete-files", help="Delete all files", action="store_true", default=None
-    )
-    parser.add_argument(
-        "--reformat-disk", help="Reformat disk", action="store_true", default=None
-    )
-    parser.add_argument(
-        "--reset", help="Reset device", action="store_true", default=None
-    )
-    parser.add_argument(
-        "--reboot", help="Reboot device", action="store_true", default=None
-    )
-    parser.add_argument(
-        "--activate-on-body-detect", help="Activate on body detect", action="store_true"
-    )
+    parser.add_argument("--delete-file", help="Delete specified file", type=str, default=None)
+    parser.add_argument("--delete-files", help="Delete all files", action="store_true", default=None)
+    parser.add_argument("--reformat-disk", help="Reformat disk", action="store_true", default=None)
+    parser.add_argument("--reset", help="Reset device", action="store_true", default=None)
+    parser.add_argument("--reboot", help="Reboot device", action="store_true", default=None)
+    parser.add_argument("--activate-on-body-detect", help="Activate on body detect", action="store_true")
     parser.add_argument(
         "--deactivate-on-body-detect",
         help="Deactivate on body detect",

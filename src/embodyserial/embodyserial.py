@@ -19,7 +19,6 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError
 from dataclasses import dataclass
 from operator import attrgetter
-from typing import Optional
 
 import serial
 import serial.tools.list_ports
@@ -53,9 +52,7 @@ class EmbodySender(ABC):
         pass
 
     @abstractmethod
-    def send(
-        self, msg: codec.Message, timeout: Optional[int] = 30
-    ) -> Optional[codec.Message]:
+    def send(self, msg: codec.Message, timeout: int | None = 30) -> codec.Message | None:
         """Send a message. wait for a response or timeout"""
         return None
 
@@ -68,9 +65,9 @@ class EmbodySerial(ConnectionListener, EmbodySender):
 
     def __init__(
         self,
-        serial_port: Optional[str] = None,
-        msg_listener: Optional[MessageListener] = None,
-        serial_instance: Optional[SerialBase] = None,
+        serial_port: str | None = None,
+        msg_listener: MessageListener | None = None,
+        serial_instance: SerialBase | None = None,
     ) -> None:
         if serial_port:
             self.__port = serial_port
@@ -82,17 +79,11 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         if serial_instance:
             self.__serial = serial_instance
         else:
-            self.__serial = serial.Serial(
-                port=self.__port, baudrate=BAUD_RATE, timeout=DEFAULT_READ_TIMEOUT
-            )
+            self.__serial = serial.Serial(port=self.__port, baudrate=BAUD_RATE, timeout=DEFAULT_READ_TIMEOUT)
             if os.name == "nt" and WINDOWS_RX_BUFFER and WINDOWS_TX_BUFFER:
-                buffer_set = self.__serial.set_buffer_size(
-                    rx_size=WINDOWS_RX_BUFFER, tx_size=WINDOWS_TX_BUFFER
-                )
+                buffer_set = self.__serial.set_buffer_size(rx_size=WINDOWS_RX_BUFFER, tx_size=WINDOWS_TX_BUFFER)
                 if buffer_set and buffer_set is not True:
-                    logging.warning(
-                        f"Failed to set buffer size for windows: {buffer_set}"
-                    )
+                    logging.warning(f"Failed to set buffer size for windows: {buffer_set}")
         self.__connected = True
         self.__sender = _MessageSender(self.__serial)
         self.__reader = _ReaderThread(serial_instance=self.__serial)
@@ -106,9 +97,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         """Send a message. do not wait for a response"""
         self.__sender.send_message(msg)
 
-    def send(
-        self, msg: codec.Message, timeout: Optional[int] = 30
-    ) -> Optional[codec.Message]:
+    def send(self, msg: codec.Message, timeout: int | None = 30) -> codec.Message | None:
         """Send a message. Wait for a response or timeout"""
         return self.__sender.send_message_and_wait_for_response(msg, timeout)
 
@@ -148,11 +137,11 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         self,
         file_name: str,
         size: int,
-        download_listener: Optional[FileDownloadListener] = None,
+        download_listener: FileDownloadListener | None = None,
         timeout: int = 300,
         delay: float = 0.0,
         ignore_crc_error=False,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Download file from device and write to temporary file.
 
         Raises:
@@ -164,28 +153,24 @@ class EmbodySerial(ConnectionListener, EmbodySender):
 
         # lock send to prevent sending other messages while downloading
         with self.__sender._send_lock:
-            return self.__reader.download_file(
-                file_name, size, download_listener, timeout, delay, ignore_crc_error
-            )
+            return self.__reader.download_file(file_name, size, download_listener, timeout, delay, ignore_crc_error)
 
     def download_file_with_retries(
         self,
         file_name: str,
         file_size: int,
-        listener: Optional[FileDownloadListener] = None,
+        listener: FileDownloadListener | None = None,
         retries=3,
         timeout_seconds_per_retry=1,
         timeout: int = 300,
         delay: float = 0.0,
-    ) -> Optional[str]:
+    ) -> str | None:
         for retry in range(1, retries + 1):
             if not self.__connected:
                 logging.warn("Disconnected, aborting download")
                 return None
             try:
-                stored_file = self.download_file(
-                    file_name, file_size, listener, timeout, delay
-                )
+                stored_file = self.download_file(file_name, file_size, listener, timeout, delay)
                 if stored_file:
                     logging.info(f"File {file_name} downloaded to: {stored_file}")
                     return stored_file
@@ -243,9 +228,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             ser.write(codec.Heartbeat().encode())
             expected_response = codec.HeartbeatResponse().encode()
             response = ser.read(len(expected_response))
-            logging.debug(
-                f"Response: {response.hex()} (expected: {expected_response.hex()})"
-            )
+            logging.debug(f"Response: {response.hex()} (expected: {expected_response.hex()})")
             ser.close()
             return response == expected_response
         except Exception as e:
@@ -263,10 +246,8 @@ class _MessageSender(ResponseMessageListener):
         self.__serial = serial_instance
         self._send_lock = threading.Lock()
         self.__response_event = threading.Event()
-        self.__current_response_message: Optional[codec.Message] = None
-        self.__send_executor = ThreadPoolExecutor(
-            max_workers=1, thread_name_prefix="send-worker"
-        )
+        self.__current_response_message: codec.Message | None = None
+        self.__send_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="send-worker")
 
     def shutdown(self) -> None:
         self.__send_executor.shutdown(wait=True, cancel_futures=False)
@@ -283,9 +264,7 @@ class _MessageSender(ResponseMessageListener):
     def send_message(self, msg: codec.Message) -> None:
         self.__send_async(msg)
 
-    def send_message_and_wait_for_response(
-        self, msg: codec.Message, timeout: Optional[int] = 30
-    ) -> Optional[codec.Message]:
+    def send_message_and_wait_for_response(self, msg: codec.Message, timeout: int | None = 30) -> codec.Message | None:
         future = self.__send_async(msg, timeout)
         try:
             return future.result(timeout + 1 if timeout else 1)
@@ -297,13 +276,11 @@ class _MessageSender(ResponseMessageListener):
             return None
 
     def __send_async(
-        self, msg: codec.Message, wait_for_response_secs: Optional[int] = None
-    ) -> concurrent.futures.Future[Optional[codec.Message]]:
+        self, msg: codec.Message, wait_for_response_secs: int | None = None
+    ) -> concurrent.futures.Future[codec.Message | None]:
         return self.__send_executor.submit(self.__do_send, msg, wait_for_response_secs)
 
-    def __do_send(
-        self, msg: codec.Message, wait_for_response_secs: Optional[int] = None
-    ) -> Optional[codec.Message]:
+    def __do_send(self, msg: codec.Message, wait_for_response_secs: int | None = None) -> codec.Message | None:
         with self._send_lock:
             if not self.__serial.is_open:
                 return None
@@ -312,7 +289,7 @@ class _MessageSender(ResponseMessageListener):
                 self.__response_event.clear()
                 self.__serial.write(msg.encode())
             except serial.SerialException as e:
-                logging.warning(f"Error sending message: {str(e)}", exc_info=False)
+                logging.warning(f"Error sending message: {e!s}", exc_info=False)
                 return None
             if wait_for_response_secs and wait_for_response_secs > 0:
                 if self.__response_event.wait(wait_for_response_secs):
@@ -323,11 +300,11 @@ class _MessageSender(ResponseMessageListener):
 @dataclass
 class _FileDownload:
     file_size: int = -1
-    file_timeout: Optional[int] = None
-    original_file_name: Optional[str] = None
-    file_name: Optional[str] = None
-    file_error: Optional[Exception] = None
-    file_download_listener: Optional[FileDownloadListener] = None
+    file_timeout: int | None = None
+    original_file_name: str | None = None
+    file_name: str | None = None
+    file_error: Exception | None = None
+    file_download_listener: FileDownloadListener | None = None
     file_delay: float = 0.0
     ignore_crc_error: bool = False
 
@@ -345,20 +322,14 @@ class _ReaderThread(threading.Thread):
         self.daemon = True
         self.name = "reader"
         self.__serial = serial_instance
-        self.__message_listener_executor = ThreadPoolExecutor(
-            max_workers=1, thread_name_prefix="rcv-worker"
-        )
-        self.__response_message_listener_executor = ThreadPoolExecutor(
-            max_workers=1, thread_name_prefix="rsp-worker"
-        )
-        self.__file_download_listener_executor = ThreadPoolExecutor(
-            max_workers=1, thread_name_prefix="dwnld-worker"
-        )
+        self.__message_listener_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rcv-worker")
+        self.__response_message_listener_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rsp-worker")
+        self.__file_download_listener_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="dwnld-worker")
         self.__message_listeners: list[MessageListener] = []
         self.__response_message_listeners: list[ResponseMessageListener] = []
         self.__connection_listeners: list[ConnectionListener] = []
         self.__file_mode = False
-        self.__f: Optional[_FileDownload] = None
+        self.__f: _FileDownload | None = None
         self.__file_event = threading.Event()
         self.alive = True
 
@@ -366,7 +337,7 @@ class _ReaderThread(threading.Thread):
         self,
         original_file_name: str,
         size: int,
-        download_listener: Optional[FileDownloadListener] = None,
+        download_listener: FileDownloadListener | None = None,
         timeout: int = 300,
         delay: float = 0.0,
         ignore_crc_error=False,
@@ -387,9 +358,7 @@ class _ReaderThread(threading.Thread):
             logging.debug(f"Sending message: {uart}, encoded: {uart.encode().hex()}")
             self.__serial.write(uart.encode())
             if not self.__file_event.wait(timeout):
-                raise embodyexceptions.MissingResponseError(
-                    "No file received within timeout"
-                )
+                raise embodyexceptions.MissingResponseError("No file received within timeout")
             if self.__f.file_error:
                 raise self.__f.file_error
             if not self.__f.file_name:
@@ -414,9 +383,7 @@ class _ReaderThread(threading.Thread):
             if self.__serial.is_open:
                 self.__serial.cancel_read()
         self.__message_listener_executor.shutdown(wait=True, cancel_futures=False)
-        self.__response_message_listener_executor.shutdown(
-            wait=True, cancel_futures=False
-        )
+        self.__response_message_listener_executor.shutdown(wait=True, cancel_futures=False)
         self.__file_download_listener_executor.shutdown(wait=True, cancel_futures=False)
         self.join(2)
 
@@ -435,21 +402,19 @@ class _ReaderThread(threading.Thread):
                 raw_header = b""
             except serial.SerialException as ser:
                 # probably some I/O problem such as disconnected USB serial adapters -> exit
-                logging.info(f"Serial port is closed (SerialException) {str(ser)}")
+                logging.info(f"Serial port is closed (SerialException) {ser!s}")
                 break
             except TypeError:
                 # read returned empty buffer
                 break
             except OSError as ose:
-                logging.info(f"OS Error reading from socket (OSError): {str(ose)}")
+                logging.info(f"OS Error reading from socket (OSError): {ose!s}")
                 break
             except ValueError as ve:
-                logging.info(
-                    f"ValueError reading from socket (Probably disconnected): {str(ve)}"
-                )
+                logging.info(f"ValueError reading from socket (Probably disconnected): {ve!s}")
                 break
             except Exception as e:
-                logging.info(f"Exception reading from socket: {str(e)} - disconnecting")
+                logging.info(f"Exception reading from socket: {e!s} - disconnecting")
                 break
         self.alive = False
         self.__file_event.set()
@@ -478,9 +443,7 @@ class _ReaderThread(threading.Thread):
                             f,
                             f.file_size,
                             round(((f.file_size - remaining_size) / f.file_size) * 100),
-                            round(
-                                ((f.file_size - remaining_size) / 1024) / (now - start)
-                            ),
+                            round(((f.file_size - remaining_size) / 1024) / (now - start)),
                         )
                         last = now
                 else:
@@ -492,12 +455,11 @@ class _ReaderThread(threading.Thread):
                     )
                 if f.file_delay > 0:
                     time.sleep(f.file_delay)
-                else:
-                    if time.time() - last > FILE_READ_INTER_BLOCK_TIMEOUT:
-                        raise embodyexceptions.TimeoutError(
-                            f"Inter-block timeout!. Read {f.file_size - remaining_size} "
-                            f"bytes out of {f.file_size}. Remaining {remaining_size+2} bytes"
-                        )
+                elif time.time() - last > FILE_READ_INTER_BLOCK_TIMEOUT:
+                    raise embodyexceptions.TimeoutError(
+                        f"Inter-block timeout!. Read {f.file_size - remaining_size} "
+                        f"bytes out of {f.file_size}. Remaining {remaining_size + 2} bytes"
+                    )
             raw_crc_received = self.__serial.read(2)
             end = time.time()
             if not raw_crc_received or len(raw_crc_received) < 2:
@@ -509,8 +471,8 @@ class _ReaderThread(threading.Thread):
                 round((f.file_size / 1024) / (end - start), 2),
             )
             logging.debug(
-                f"Read {round(f.file_size/1024,2)}KB in {end-start} secs "
-                f"- {round((f.file_size/1024)/(end-start),2)}KB/s"
+                f"Read {round(f.file_size / 1024, 2)}KB in {end - start} secs "
+                f"- {round((f.file_size / 1024) / (end - start), 2)}KB/s"
             )
             (crc_received,) = struct.unpack(">H", raw_crc_received)
             calculated_crc = crc.crc16(data=in_memory_buffer)
@@ -528,9 +490,7 @@ class _ReaderThread(threading.Thread):
             tmp.flush()
             tmp.close()
             f.file_name = tmp.name
-            self.__async_notify_file_download_completed(
-                f, round((f.file_size / 1024) / (end - start), 2)
-            )
+            self.__async_notify_file_download_completed(f, round((f.file_size / 1024) / (end - start), 2))
         except embodyexceptions.CrcError as e:
             if not f.ignore_crc_error:
                 f.file_error = e
@@ -541,9 +501,7 @@ class _ReaderThread(threading.Thread):
                 self.__async_notify_file_download_failed(f, f.file_error)
             self.__file_event.set()
 
-    def __async_notify_file_download_in_progress(
-        self, f: _FileDownload, size: int, progress: float, kbps: float
-    ):
+    def __async_notify_file_download_in_progress(self, f: _FileDownload, size: int, progress: float, kbps: float):
         if f.file_download_listener and f.original_file_name:
             self.__file_download_listener_executor.submit(
                 _ReaderThread.__notify_file_download_progress,
@@ -596,7 +554,7 @@ class _ReaderThread(threading.Thread):
                     self.__handle_incoming_message(msg)
             except Exception as e:
                 logging.warning(
-                    f"Error processing protocol message, error: {str(e)}",
+                    f"Error processing protocol message, error: {e!s}",
                     exc_info=True,
                 )
 
@@ -611,18 +569,14 @@ class _ReaderThread(threading.Thread):
         if len(self.__message_listeners) == 0:
             return
         for listener in self.__message_listeners:
-            self.__message_listener_executor.submit(
-                _ReaderThread.__notify_message_listener, listener, msg
-            )
+            self.__message_listener_executor.submit(_ReaderThread.__notify_message_listener, listener, msg)
 
     @staticmethod
-    def __notify_message_listener(
-        listener: MessageListener, msg: codec.Message
-    ) -> None:
+    def __notify_message_listener(listener: MessageListener, msg: codec.Message) -> None:
         try:
             listener.message_received(msg)
         except Exception as e:
-            logging.warning(f"Error notifying listener: {str(e)}", exc_info=True)
+            logging.warning(f"Error notifying listener: {e!s}", exc_info=True)
 
     def add_message_listener(self, listener: MessageListener) -> None:
         self.__message_listeners.append(listener)
@@ -632,18 +586,14 @@ class _ReaderThread(threading.Thread):
         if len(self.__response_message_listeners) == 0:
             return
         for listener in self.__response_message_listeners:
-            self.__response_message_listener_executor.submit(
-                _ReaderThread.__notify_rsp_message_listener, listener, msg
-            )
+            self.__response_message_listener_executor.submit(_ReaderThread.__notify_rsp_message_listener, listener, msg)
 
     @staticmethod
-    def __notify_rsp_message_listener(
-        listener: ResponseMessageListener, msg: codec.Message
-    ) -> None:
+    def __notify_rsp_message_listener(listener: ResponseMessageListener, msg: codec.Message) -> None:
         try:
             listener.response_message_received(msg)
         except Exception as e:
-            logging.warning(f"Error notifying listener: {str(e)}", exc_info=True)
+            logging.warning(f"Error notifying listener: {e!s}", exc_info=True)
 
     def add_response_message_listener(self, listener: ResponseMessageListener) -> None:
         self.__response_message_listeners.append(listener)
@@ -658,15 +608,11 @@ class _ReaderThread(threading.Thread):
             _ReaderThread.__notify_connection_listener(listener, connected)
 
     @staticmethod
-    def __notify_connection_listener(
-        listener: ConnectionListener, connected: bool
-    ) -> None:
+    def __notify_connection_listener(listener: ConnectionListener, connected: bool) -> None:
         try:
             listener.on_connected(connected)
         except Exception as e:
-            logging.warning(
-                f"Error notifying connection listener: {str(e)}", exc_info=True
-            )
+            logging.warning(f"Error notifying connection listener: {e!s}", exc_info=True)
 
     @staticmethod
     def __notify_file_download_progress(
@@ -679,9 +625,7 @@ class _ReaderThread(threading.Thread):
         try:
             listener.on_file_download_progress(original_file_name, size, progress, kbps)
         except Exception as e:
-            logging.warning(
-                f"Error notifying file download listener: {str(e)}", exc_info=True
-            )
+            logging.warning(f"Error notifying file download listener: {e!s}", exc_info=True)
 
     @staticmethod
     def __notify_file_download_complete(
@@ -690,9 +634,7 @@ class _ReaderThread(threading.Thread):
         try:
             listener.on_file_download_complete(original_file_name, path, kbps)
         except Exception as e:
-            logging.warning(
-                f"Error notifying file download listener: {str(e)}", exc_info=True
-            )
+            logging.warning(f"Error notifying file download listener: {e!s}", exc_info=True)
 
     @staticmethod
     def __notify_file_download_failed(
@@ -701,6 +643,4 @@ class _ReaderThread(threading.Thread):
         try:
             listener.on_file_download_failed(original_file_name, error)
         except Exception as e:
-            logging.warning(
-                f"Error notifying file download listener: {str(e)}", exc_info=True
-            )
+            logging.warning(f"Error notifying file download listener: {e!s}", exc_info=True)
