@@ -14,27 +14,24 @@ jobs:
     name: Release
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 2
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/cache@v4
         with:
-          python-version: "3.11"
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
 
-      - name: Upgrade pip
-        run: |
-          pip install --constraint=${{ github.workspace }}/.github/workflows/constraints.txt pip
-          pip --version
+      - name: Set up the environment
+        uses: ./.github/actions/setup-python-env
 
-      - name: Install Poetry
-        run: |
-          pip install --constraint=${{ github.workspace }}/.github/workflows/constraints.txt poetry
-          pip install --constraint=${{ github.workspace }}/.github/workflows/constraints.txt poetry-plugin-export
-          poetry --version
+      - name: Run checks
+        run: make check
 
       - name: Check if there is a parent commit
         id: check-parent-commit
@@ -47,18 +44,42 @@ jobs:
         uses: salsify/action-detect-and-tag-new-version@v2.0.3
         with:
           version-command: |
-            bash -o pipefail -c "poetry version -s"
+            bash -o pipefail -c "grep -m 1 'version = ' pyproject.toml | sed -E 's/.*version = \"([^\"]+)\".*/\1/'"
 
       - name: Bump version for developmental release
         if: ${{ ! steps.check-version.outputs.tag }}
         run: |
-          poetry version patch &&
-          version=$(poetry version -s) &&
-          poetry version $version.dev.$(date +%s)
+          pip install tomli tomli-w
+          # Python script to bump patch version and add dev suffix
+          python -c "
+          import tomli, tomli_w, time, re
+
+          # Read the current pyproject.toml
+          with open('pyproject.toml', 'rb') as f:
+              data = tomli.load(f)
+
+          # Extract current version
+          current = data['project']['version']
+
+          # Increase patch version
+          version_parts = current.split('.')
+          version_parts[-1] = str(int(version_parts[-1]) + 1)
+          new_version = '.'.join(version_parts)
+
+          # Add dev suffix with timestamp
+          dev_version = f'{new_version}.dev.{int(time.time())}'
+          data['project']['version'] = dev_version
+
+          # Write back to pyproject.toml
+          with open('pyproject.toml', 'wb') as f:
+              tomli_w.dump(data, f)
+
+          print(f'Bumped version from {current} to {dev_version}')
+          "
 
       - name: Build package
         run: |
-          poetry build --ansi
+          uv build --wheel --sdist
 
       - name: Publish package on PyPI
         if: steps.check-version.outputs.tag

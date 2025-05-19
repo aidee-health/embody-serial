@@ -7,94 +7,40 @@ on:
       - main
 
 jobs:
-  tests:
-    name: ${{ matrix.session }} ${{ matrix.python }} / ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { python: "3.11", os: "ubuntu-latest", session: "pre-commit" }
-          - { python: "3.11", os: "ubuntu-latest", session: "mypy" }
-          - { python: "3.11", os: "ubuntu-latest", session: "tests" }
-          - { python: "3.11", os: "ubuntu-latest", session: "typeguard" }
-          - { python: "3.11", os: "ubuntu-latest", session: "xdoctest" }
-          - { python: "3.11", os: "ubuntu-latest", session: "docs-build" }
-
-    env:
-      NOXSESSION: ${{ matrix.session }}
-      FORCE_COLOR: "1"
-      PRE_COMMIT_COLOR: "always"
-
+  quality:
+    runs-on: ubuntu-latest
     steps:
-      - name: Check out the repository
+      - name: Check out
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
-
-      - name: Upgrade pip
-        run: |
-          pip install --constraint=.github/workflows/constraints.txt pip
-          pip --version
-
-      - name: Upgrade pip in virtual environments
-        shell: python
-        run: |
-          import os
-          import pip
-
-          with open(os.environ["GITHUB_ENV"], mode="a") as io:
-              print(f"VIRTUALENV_PIP={pip.__version__}", file=io)
-
-      - name: Install Poetry
-        run: |
-          echo "Current directory is: $PWD"
-          echo "Contents of the current directory:" && ls -la
-          echo "Contents of the .github/workflows directory:" && ls -la .github/workflows
-          pipx install --pip-args=--constraint=${{ github.workspace }}/.github/workflows/constraints.txt poetry
-          pip install --constraint=.github/workflows/constraints.txt poetry-plugin-export
-          poetry --version
-
-      - name: Install Nox
-        run: |
-          pipx install --pip-args=--constraint=${{ github.workspace }}/.github/workflows/constraints.txt nox
-          pipx inject --pip-args=--constraint=${{ github.workspace }}/.github/workflows/constraints.txt nox nox-poetry
-          nox --version
-
-      - name: Compute pre-commit cache key
-        if: matrix.session == 'pre-commit'
-        id: pre-commit-cache
-        shell: python
-        run: |
-          import hashlib
-          import sys
-
-          python = "py{}.{}".format(*sys.version_info[:2])
-          payload = sys.version.encode() + sys.executable.encode()
-          digest = hashlib.sha256(payload).hexdigest()
-          result = "${{ runner.os }}-{}-{}-pre-commit".format(python, digest[:8])
-
-          print("::set-output name=result::{}".format(result))
-
-      - name: Restore pre-commit cache
-        uses: actions/cache@v4
-        if: matrix.session == 'pre-commit'
+      - uses: actions/cache@v4
         with:
           path: ~/.cache/pre-commit
-          key: ${{ steps.pre-commit-cache.outputs.result }}-${{ hashFiles('.pre-commit-config.yaml') }}
-          restore-keys: |
-            ${{ steps.pre-commit-cache.outputs.result }}-
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
 
-      - name: Run Nox
-        run: |
-          nox --python=${{ matrix.python }}
+      - name: Set up the environment
+        uses: ./.github/actions/setup-python-env
 
-      - name: Upload documentation
-        if: matrix.session == 'docs-build'
-        uses: actions/upload-artifact@v4
+      - name: Run checks
+        run: make check
+
+  tests-and-type-check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"] # 3.13 is disabled until numpy is updated to 2.1+
+      fail-fast: false
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up the environment
+        uses: ./.github/actions/setup-python-env
         with:
-          name: docs
-          path: docs/_build
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run tests
+        run: uv run python -m pytest tests
