@@ -11,9 +11,7 @@ from embodyserial.helpers import EmbodySendHelper
 
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s:%(levelname)s:%(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(levelname)s:%(message)s")
     logging.info("Starting reporting example")
 
     logging.info("Setting up communicator")
@@ -23,9 +21,9 @@ if __name__ == "__main__":
     files = send_helper.get_files()
     if len(files) > 0:
         for name, size in files:
-            logging.info(f"Downloading {name} ({round(size/1024)}KB)")
+            logging.info(f"Downloading {name} ({round(size / 1024)}KB)")
             file_name = embody_serial.download_file(file_name=name, size=size)
-            logging.info(f"Downloaded {file_name} ({round(size/1024)}KB)")
+            logging.info(f"Downloaded {file_name} ({round(size / 1024)}KB)")
     else:
         logging.info("No files found on device")
 

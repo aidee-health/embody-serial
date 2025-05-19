@@ -4,8 +4,7 @@ import logging
 import struct
 import time
 from datetime import datetime
-from datetime import timezone
-from typing import Optional
+from datetime import UTC
 
 from embodycodec import attributes
 from embodycodec import codec
@@ -19,85 +18,63 @@ from embodyserial.exceptions import NackError
 class EmbodySendHelper:
     """Facade to make send/receive more protocol agnostic with simple get/set methods."""
 
-    def __init__(self, sender: EmbodySender, timeout: Optional[int] = 30) -> None:
+    def __init__(self, sender: EmbodySender, timeout: int | None = 30) -> None:
         self.__sender = sender
         self.__send_timeout = timeout
 
     def get_current_time(self) -> datetime:
-        response_attribute = self.__do_send_get_attribute_request(
-            attributes.CurrentTimeAttribute.attribute_id
-        )
-        return datetime.fromtimestamp(response_attribute.value / 1000, tz=timezone.utc)
+        response_attribute = self.__do_send_get_attribute_request(attributes.CurrentTimeAttribute.attribute_id)
+        return datetime.fromtimestamp(response_attribute.value / 1000, tz=UTC)
 
     def get_serial_no(self) -> str:
-        response_attribute = self.__do_send_get_attribute_request(
-            attributes.SerialNoAttribute.attribute_id
-        )
+        response_attribute = self.__do_send_get_attribute_request(attributes.SerialNoAttribute.attribute_id)
         response = response_attribute.formatted_value()
         assert response
         return response
 
     def get_vendor(self) -> str:
-        response_attribute = self.__do_send_get_attribute_request(
-            attributes.VendorAttribute.attribute_id
-        )
+        response_attribute = self.__do_send_get_attribute_request(attributes.VendorAttribute.attribute_id)
         response = response_attribute.formatted_value()
         assert response
         return response
 
     def get_model(self) -> str:
-        response_attribute = self.__do_send_get_attribute_request(
-            attributes.ModelAttribute.attribute_id
-        )
+        response_attribute = self.__do_send_get_attribute_request(attributes.ModelAttribute.attribute_id)
         response = response_attribute.formatted_value()
         assert response
         return response
 
     def get_bluetooth_mac(self) -> str:
-        response_attribute = self.__do_send_get_attribute_request(
-            attributes.BluetoothMacAttribute.attribute_id
-        )
+        response_attribute = self.__do_send_get_attribute_request(attributes.BluetoothMacAttribute.attribute_id)
         response = response_attribute.formatted_value()
         assert response
         return response
 
     def get_battery_level(self) -> int:
-        response_attribute = self.__do_send_get_attribute_request(
-            attributes.BatteryLevelAttribute.attribute_id
-        )
+        response_attribute = self.__do_send_get_attribute_request(attributes.BatteryLevelAttribute.attribute_id)
         return response_attribute.value
 
     def get_heart_rate(self) -> int:
-        response_attribute = self.__do_send_get_attribute_request(
-            attributes.HeartrateAttribute.attribute_id
-        )
+        response_attribute = self.__do_send_get_attribute_request(attributes.HeartrateAttribute.attribute_id)
         return response_attribute.value
 
     def get_charge_state(self) -> bool:
-        response_attribute = self.__do_send_get_attribute_request(
-            attributes.ChargeStateAttribute.attribute_id
-        )
+        response_attribute = self.__do_send_get_attribute_request(attributes.ChargeStateAttribute.attribute_id)
         return response_attribute.value
 
     def get_temperature(self) -> float:
-        response_attribute = self.__do_send_get_attribute_request(
-            attributes.TemperatureAttribute.attribute_id
-        )
+        response_attribute = self.__do_send_get_attribute_request(attributes.TemperatureAttribute.attribute_id)
         assert isinstance(response_attribute, attributes.TemperatureAttribute)
         return response_attribute.temp_celsius()
 
     def get_firmware_version(self) -> str:
-        response_attribute = self.__do_send_get_attribute_request(
-            attributes.FirmwareVersionAttribute.attribute_id
-        )
+        response_attribute = self.__do_send_get_attribute_request(attributes.FirmwareVersionAttribute.attribute_id)
         response = response_attribute.formatted_value()
         assert response
         return response
 
     def get_on_body_state(self) -> bool:
-        response_attribute = self.__do_send_get_attribute_request(
-            attributes.BeltOnBodyStateAttribute.attribute_id
-        )
+        response_attribute = self.__do_send_get_attribute_request(attributes.BeltOnBodyStateAttribute.attribute_id)
         return response_attribute.value
 
     def get_recording_state(self) -> bool:
@@ -116,7 +93,7 @@ class EmbodySendHelper:
             raise NackError(response)
         assert isinstance(response, codec.ListFilesResponse)
 
-        files: list[tuple[str, int]] = list()
+        files: list[tuple[str, int]] = []
         if len(response.files) == 0:
             return files
         else:
@@ -125,9 +102,7 @@ class EmbodySendHelper:
             return files
 
     def delete_file(self, file_name: str) -> bool:
-        response = self.__sender.send(
-            msg=codec.DeleteFile(types.File(file_name)), timeout=self.__send_timeout
-        )
+        response = self.__sender.send(msg=codec.DeleteFile(types.File(file_name)), timeout=self.__send_timeout)
         if not response:
             raise MissingResponseError()
         if isinstance(response, codec.NackResponse):
@@ -135,9 +110,7 @@ class EmbodySendHelper:
         assert isinstance(response, codec.DeleteFileResponse)
         return True
 
-    def delete_file_with_retries(
-        self, file_name: str, retries=3, timeout_seconds_per_retry=0.5
-    ) -> bool:
+    def delete_file_with_retries(self, file_name: str, retries=3, timeout_seconds_per_retry=0.5) -> bool:
         for retry in range(1, retries + 1):
             try:
                 if self.delete_file(file_name):
@@ -153,7 +126,7 @@ class EmbodySendHelper:
         return False
 
     def set_current_timestamp(self) -> bool:
-        return self.set_timestamp(datetime.now(timezone.utc))
+        return self.set_timestamp(datetime.now(UTC))
 
     def set_timestamp(self, time: datetime) -> bool:
         attr = attributes.CurrentTimeAttribute(int(time.timestamp() * 1000))
@@ -164,9 +137,7 @@ class EmbodySendHelper:
         return self.__do_send_set_attribute_request(attr)
 
     def reformat_disk(self) -> bool:
-        response = self.__sender.send(
-            msg=codec.ReformatDisk(), timeout=self.__send_timeout
-        )
+        response = self.__sender.send(msg=codec.ReformatDisk(), timeout=self.__send_timeout)
         if not response:
             raise MissingResponseError()
         if isinstance(response, codec.NackResponse):
@@ -175,19 +146,11 @@ class EmbodySendHelper:
         return True
 
     def reset_device(self) -> bool:
-        self.__sender.send_async(
-            msg=codec.ExecuteCommand(
-                command_id=codec.ExecuteCommand.RESET_DEVICE, value=b""
-            )
-        )
+        self.__sender.send_async(msg=codec.ExecuteCommand(command_id=codec.ExecuteCommand.RESET_DEVICE, value=b""))
         return True
 
     def reboot_device(self) -> bool:
-        self.__sender.send_async(
-            msg=codec.ExecuteCommand(
-                command_id=codec.ExecuteCommand.REBOOT_DEVICE, value=b""
-            )
-        )
+        self.__sender.send_async(msg=codec.ExecuteCommand(command_id=codec.ExecuteCommand.REBOOT_DEVICE, value=b""))
         return True
 
     def click_button(self, click_count: int, click_duration_ms: int) -> bool:
@@ -200,9 +163,7 @@ class EmbodySendHelper:
         return True
 
     def delete_all_files(self) -> bool:
-        response = self.__sender.send(
-            msg=codec.DeleteAllFiles(), timeout=self.__send_timeout
-        )
+        response = self.__sender.send(msg=codec.DeleteAllFiles(), timeout=self.__send_timeout)
         if not response:
             raise MissingResponseError()
         if isinstance(response, codec.NackResponse):
@@ -215,17 +176,11 @@ class EmbodySendHelper:
         return self.__do_send_set_attribute_request(attr)
 
     def get_on_body_detect(self) -> bool:
-        response_attribute = self.__do_send_get_attribute_request(
-            attributes.OnBodyDetectAttribute.attribute_id
-        )
+        response_attribute = self.__do_send_get_attribute_request(attributes.OnBodyDetectAttribute.attribute_id)
         return response_attribute.value
 
-    def __do_send_get_attribute_request(
-        self, attribute_id: int
-    ) -> attributes.Attribute:
-        response = self.__sender.send(
-            msg=codec.GetAttribute(attribute_id), timeout=self.__send_timeout
-        )
+    def __do_send_get_attribute_request(self, attribute_id: int) -> attributes.Attribute:
+        response = self.__sender.send(msg=codec.GetAttribute(attribute_id), timeout=self.__send_timeout)
         if not response:
             raise MissingResponseError()
         if isinstance(response, codec.NackResponse):
