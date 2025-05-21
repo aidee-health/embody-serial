@@ -1,6 +1,6 @@
 [project]
 name = "embody-serial"
-version = "1.0.34"
+version = "1.0.35"
 description = "Communicate with the embody device over a serial port"
 authors = [{name = "Aidee Health AS", email = "hello@aidee.io"}]
 license = "MIT"
