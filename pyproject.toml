@@ -1,6 +1,6 @@
 [project]
 name = "embody-serial"
-version = "1.0.34"
+version = "1.0.35"
 description = "Communicate with the embody device over a serial port"
 authors = [{name = "Aidee Health AS", email = "hello@aidee.io"}]
 license = "MIT"
@@ -18,7 +18,6 @@ dependencies= [
 [dependency-groups]
 dev = [
     "pytest>=7.2.0",
-    "h5py>=3.13.0,<4",
     "Pygments>=2.10.0",
     "ruff>=0.11.5",
     "mypy>=0.930",
