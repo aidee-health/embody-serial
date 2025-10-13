@@ -113,6 +113,39 @@ Pre-commit hooks are installed automatically when you run `make install`, ensuri
 It is recommended to open an issue before starting work on anything.
 This will allow a chance to talk it over with the owners and validate your approach.
 
+## Code Quality Standards
+
+When contributing code, please follow these standards:
+
+### Logging
+
+This library follows Python logging best practices:
+
+- **Use module loggers**: Each module should have `logger = logging.getLogger(__name__)`
+- **Never configure root logger**: The library uses its own logger hierarchy (`embodyserial.*`)
+- **Performance guards for expensive operations**: Use `if logger.isEnabledFor(logging.LEVEL)` before expensive string formatting or calculations
+- **Simple operations don't need guards**: Direct logging calls for simple strings are fine
+
+Example:
+```python
+import logging
+logger = logging.getLogger(__name__)
+
+# Simple logging - no guard needed
+logger.info("Processing started")
+
+# Expensive operation - use guard
+if logger.isEnabledFor(logging.DEBUG):
+    logger.debug(f"Processed {len(data)} items: {expensive_format(data)}")
+```
+
+### Threading
+
+- All public methods must be thread-safe
+- Use appropriate locks when accessing shared state
+- Callbacks execute in dedicated callback threads
+- Document threading behavior in docstrings
+
 ## Using the Makefile
 
 This project includes a Makefile with convenient shortcuts for common development tasks:

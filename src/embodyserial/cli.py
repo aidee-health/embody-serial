@@ -15,6 +15,9 @@ from embodyserial import __version__
 from embodyserial.embodyserial import EmbodySerial
 from embodyserial.helpers import EmbodySendHelper
 from embodyserial.listeners import FileDownloadListener
+from embodyserial.logging import configure_library_logging
+
+logger = logging.getLogger(__name__)
 
 
 get_attributes_dict: dict[str, str] = {
@@ -44,9 +47,10 @@ def main(args=None):
         args = sys.argv[1:]
 
     parsed_args = __get_args(args)
-    logging.basicConfig(
+    # Configure library-specific logging instead of root logger
+    configure_library_logging(
         level=getattr(logging, parsed_args.log_level.upper(), logging.INFO),
-        format="%(asctime)s:%(levelname)s:%(message)s",
+        format_string="%(asctime)s:%(levelname)s:%(message)s",
     )
     try:
         embody_serial = EmbodySerial(serial_port=parsed_args.device)
@@ -240,7 +244,7 @@ def __do_download_file(
 
         def on_file_download_failed(self, original_file_name: str, error: Exception) -> None:
             """Process file download failure."""
-            logging.error(f"Download failed for {original_file_name}: {error}")
+            logger.error(f"Download failed for {original_file_name}: {error}")
 
     listener = _DownloadListener()
     if retries == 0:

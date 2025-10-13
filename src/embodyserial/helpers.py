@@ -15,6 +15,8 @@ from embodyserial.embodyserial import EmbodySender
 from embodyserial.exceptions import MissingResponseError
 from embodyserial.exceptions import NackError
 
+logger = logging.getLogger(__name__)
+
 
 class EmbodySendHelper:
     """Facade to make send/receive more protocol agnostic with simple get/set methods."""
@@ -123,13 +125,13 @@ class EmbodySendHelper:
         for retry in range(1, retries + 1):
             try:
                 if self.delete_file(file_name):
-                    logging.info(f"Deleted file on device: {file_name}")
+                    logger.info(f"Deleted file on device: {file_name}")
                     return True
-                logging.warning(f"Delete failed for {file_name} (attempt: {retry})")
+                logger.warning(f"Delete failed for {file_name} (attempt: {retry})")
                 time.sleep(timeout_seconds_per_retry)
                 continue
             except (MissingResponseError, NackError, SerialException) as e:
-                logging.warning(f"Delete failed for {file_name} (attempt: {retry}): {e}")
+                logger.warning(f"Delete failed for {file_name} (attempt: {retry}): {e}")
                 time.sleep(timeout_seconds_per_retry)
                 continue
         return False
