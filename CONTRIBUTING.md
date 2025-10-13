@@ -139,11 +139,28 @@ if logger.isEnabledFor(logging.DEBUG):
     logger.debug(f"Processed {len(data)} items: {expensive_format(data)}")
 ```
 
-### Threading
+### Threading Architecture
 
+This library uses multiple thread executors for different purposes to prevent callback starvation:
+
+1. **Send Executor** (1 worker): Serializes all send operations
+2. **Message Callback Executor** (1 worker): Handles incoming messages from device
+3. **Response Callback Executor** (1 worker): Handles responses to sent messages (critical path)
+4. **File Download Callback Executor** (1 worker): Handles file transfer progress/completion
+
+**Why Three Separate Callback Executors?**
+
+The separation of callback executors prevents a critical deadlock scenario:
+- If message callbacks call `send()` and block waiting for responses
+- Response callbacks MUST execute to unblock those sends
+- Sharing a single executor would allow message callbacks to starve response callbacks
+- Dedicated response executor ensures responses can always execute
+
+**Guidelines:**
 - All public methods must be thread-safe
 - Use appropriate locks when accessing shared state
-- Callbacks execute in dedicated callback threads
+- Avoid long-running operations in callbacks (they block their executor)
+- If callbacks need to do heavy work, offload to a separate thread
 - Document threading behavior in docstrings
 
 ## Using the Makefile
@@ -184,12 +201,6 @@ flowchart TD
 - [Best practices for project structure according to pytest](https://docs.pytest.org/en/latest/explanation/goodpractices.html)
 - [Using GitHub as a private PiPI server](https://medium.com/network-letters/using-github-as-a-private-python-package-index-server-798a6e1cfdef)
 - [Project structure - rationale and best practice](https://blog.ionelmc.ro/2014/05/25/python-packaging)
-- [Hypermodern Cookiecutter Documentation](https://cookiecutter-hypermodern-python.readthedocs.io/)
-- [Hypermodern Cookiecutter GitHub](https://github.com/cjolowicz/cookiecutter-hypermodern-python)
 - [Threading Howto](https://superfastpython.com/threading-in-python/)
 
 [pull request]: https://github.com/aidee-health/embody-serial/pulls
-
-<!-- github-only -->
-
-[code of conduct]: CODE_OF_CONDUCT.md

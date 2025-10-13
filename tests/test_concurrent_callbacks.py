@@ -14,29 +14,20 @@ from tests.test_embodyserial import DummySerial
 class TestConcurrentCallbacks:
     """Test that callbacks can run concurrently without deadlock."""
 
-    def test_three_callbacks_run_in_parallel(self):
-        """Verify that up to 3 callbacks can execute simultaneously."""
+    def test_message_callbacks_run_serially(self):
+        """Verify message callbacks execute serially (single worker)."""
         serial = DummySerial()
 
         execution_times = []
         lock = threading.Lock()
-        barrier = threading.Barrier(3)  # Synchronize 3 callbacks
 
         class SlowListener(MessageListener):
             def __init__(self, listener_id):
                 self.id = listener_id
-                self.called = False
 
             def message_received(self, msg: codec.Message) -> None:
-                if self.called:
-                    return  # Only process first message
-                self.called = True
-
                 with lock:
                     execution_times.append((self.id, "start", time.time()))
-
-                # Wait for all 3 to start
-                barrier.wait(timeout=1)
 
                 time.sleep(0.05)  # Simulate processing
 
@@ -54,24 +45,19 @@ class TestConcurrentCallbacks:
         reader._ReaderThread__handle_message(codec.Heartbeat())
 
         # Wait for all callbacks to complete
-        time.sleep(0.2)
+        time.sleep(0.3)
 
-        # Verify all three ran in parallel
+        # Verify all three ran
         start_events = [(id, t) for id, event, t in execution_times if event == "start"]
         end_events = [(id, t) for id, event, t in execution_times if event == "end"]
 
         assert len(start_events) == 3
         assert len(end_events) == 3
 
-        # All should start within a short time (parallel execution)
-        start_times = [t for _, t in start_events]
-        latest_start = max(start_times)
-        earliest_start = min(start_times)
-        assert latest_start - earliest_start < 0.1  # Started nearly simultaneously
-
-        # All should end after all started (barrier ensures this)
-        earliest_end = min(t for _, t in end_events)
-        assert earliest_end > latest_start
+        # With serial execution (max_workers=1), callbacks should NOT overlap
+        # Each callback should end before the next starts
+        for i in range(len(end_events) - 1):
+            assert end_events[i][1] <= start_events[i + 1][1], "Callbacks should execute serially with max_workers=1"
 
         communicator.shutdown()
 
@@ -170,43 +156,49 @@ class TestConcurrentCallbacks:
         download_thread.join(timeout=2)
         communicator.shutdown()
 
-    def test_max_three_concurrent_callbacks(self):
-        """Verify that only 3 callbacks run concurrently, 4th waits."""
+    def test_response_callbacks_not_starved_by_message_callbacks(self):
+        """Verify response callbacks have dedicated executor and cannot be starved."""
         serial = DummySerial()
         communicator = serialcomm.EmbodySerial(serial_port="Dummy", serial_instance=serial)
 
-        active_count = 0
-        max_active = 0
-        lock = threading.Lock()
+        message_callback_started = threading.Event()
+        response_callback_completed = threading.Event()
 
-        class CountingListener(MessageListener):
-            def __init__(self, listener_id):
-                self.id = listener_id
+        class BlockingMessageListener(MessageListener):
+            """Message callback that blocks for extended period."""
 
             def message_received(self, msg: codec.Message) -> None:
-                nonlocal active_count, max_active
-                with lock:
-                    active_count += 1
-                    max_active = max(max_active, active_count)
+                message_callback_started.set()
+                time.sleep(0.5)  # Block message callback executor
 
-                time.sleep(0.1)  # Hold the worker
+        class FastResponseListener(ResponseMessageListener):
+            """Response callback that should execute immediately."""
 
-                with lock:
-                    active_count -= 1
+            def response_message_received(self, msg: codec.Message) -> None:
+                response_callback_completed.set()
 
-        # Add four listeners
-        for i in range(4):
-            communicator.add_message_listener(CountingListener(i))
+        # Add blocking message listener
+        communicator.add_message_listener(BlockingMessageListener())
 
-        # Trigger all four quickly
+        # Add response listener
         reader = communicator._EmbodySerial__reader
-        for _ in range(4):
-            reader._ReaderThread__handle_message(codec.Heartbeat())
+        reader.add_response_message_listener(FastResponseListener())
 
-        # Wait for processing
-        time.sleep(0.3)
+        # Trigger blocking message callback
+        reader._ReaderThread__handle_message(codec.Heartbeat())
 
-        # Should have seen at most 3 concurrent
-        assert max_active == 3
+        # Wait for message callback to start blocking
+        assert message_callback_started.wait(timeout=1)
+
+        # Now send response callback - it should execute immediately despite blocked message callback
+        start = time.time()
+        reader._ReaderThread__handle_response_message(codec.HeartbeatResponse())
+
+        # Response callback should complete quickly (not wait for message callback)
+        assert response_callback_completed.wait(timeout=0.2)
+        elapsed = time.time() - start
+
+        # Should complete much faster than the 0.5s message callback block time
+        assert elapsed < 0.3, f"Response callback took {elapsed}s - likely starved by message callback"
 
         communicator.shutdown()

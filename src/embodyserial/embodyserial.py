@@ -330,11 +330,15 @@ class _ReaderThread(threading.Thread):
         self.daemon = True
         self.name = "reader"
         self.__serial = serial_instance
-        # Consolidated executor for all callbacks
-        # Using max_workers=3 to allow parallel callback processing without blocking the reader thread.
-        # This is safe because callbacks may trigger new sends via the separate send executor,
-        # preventing any deadlock between reading and sending operations.
-        self.__callback_executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix="callback-worker")
+        # Three separate executors to prevent callback type starvation:
+        # - Message callbacks may be slow and call send() - isolated in rcv-worker
+        # - Response callbacks are critical path for unblocking senders - dedicated rsp-worker ensures no starvation
+        # - File download callbacks may be frequent during transfers - isolated in dwnld-worker
+        # This architecture prevents deadlock when message callbacks call send() and wait for responses,
+        # because response callbacks have their own dedicated worker and cannot be starved.
+        self.__message_listener_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rcv-worker")
+        self.__response_message_listener_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rsp-worker")
+        self.__file_download_listener_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="dwnld-worker")
         self.__message_listeners: list[MessageListener] = []
         self.__response_message_listeners: list[ResponseMessageListener] = []
         self.__connection_listeners: list[ConnectionListener] = []
@@ -392,7 +396,9 @@ class _ReaderThread(threading.Thread):
         if hasattr(self.__serial, "cancel_read"):
             if self.__serial.is_open:
                 self.__serial.cancel_read()
-        self.__callback_executor.shutdown(wait=True, cancel_futures=False)
+        self.__message_listener_executor.shutdown(wait=True, cancel_futures=False)
+        self.__response_message_listener_executor.shutdown(wait=True, cancel_futures=False)
+        self.__file_download_listener_executor.shutdown(wait=True, cancel_futures=False)
         self.join(2)
 
     def run(self) -> None:
@@ -511,7 +517,7 @@ class _ReaderThread(threading.Thread):
 
     def __async_notify_file_download_in_progress(self, f: _FileDownload, size: int, progress: float, kbps: float):
         if f.file_download_listener and f.original_file_name:
-            self.__callback_executor.submit(
+            self.__file_download_listener_executor.submit(
                 _ReaderThread.__notify_file_download_progress,
                 f.file_download_listener,
                 f.original_file_name,
@@ -522,7 +528,7 @@ class _ReaderThread(threading.Thread):
 
     def __async_notify_file_download_completed(self, f: _FileDownload, kbps: float):
         if f.file_download_listener and f.original_file_name and f.file_name:
-            self.__callback_executor.submit(
+            self.__file_download_listener_executor.submit(
                 _ReaderThread.__notify_file_download_complete,
                 f.file_download_listener,
                 f.original_file_name,
@@ -532,7 +538,7 @@ class _ReaderThread(threading.Thread):
 
     def __async_notify_file_download_failed(self, f: _FileDownload, error: Exception):
         if f.file_download_listener and f.original_file_name:
-            self.__callback_executor.submit(
+            self.__file_download_listener_executor.submit(
                 _ReaderThread.__notify_file_download_failed,
                 f.file_download_listener,
                 f.original_file_name,
@@ -577,7 +583,7 @@ class _ReaderThread(threading.Thread):
         if len(self.__message_listeners) == 0:
             return
         for listener in self.__message_listeners:
-            self.__callback_executor.submit(_ReaderThread.__notify_message_listener, listener, msg)
+            self.__message_listener_executor.submit(_ReaderThread.__notify_message_listener, listener, msg)
 
     @staticmethod
     def __notify_message_listener(listener: MessageListener, msg: codec.Message) -> None:
@@ -594,7 +600,7 @@ class _ReaderThread(threading.Thread):
         if len(self.__response_message_listeners) == 0:
             return
         for listener in self.__response_message_listeners:
-            self.__callback_executor.submit(_ReaderThread.__notify_rsp_message_listener, listener, msg)
+            self.__response_message_listener_executor.submit(_ReaderThread.__notify_rsp_message_listener, listener, msg)
 
     @staticmethod
     def __notify_rsp_message_listener(listener: ResponseMessageListener, msg: codec.Message) -> None:

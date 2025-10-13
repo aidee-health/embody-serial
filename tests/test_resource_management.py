@@ -83,34 +83,45 @@ class TestShutdownResilience:
 
 
 class TestThreadExecutorManagement:
-    """Test thread executor consolidation."""
+    """Test thread executor separation for starvation prevention."""
 
-    def test_single_callback_executor(self):
-        """Verify only one callback executor exists."""
+    def test_three_separate_executors(self):
+        """Verify three separate executors exist to prevent callback starvation."""
         serial = DummySerial()
         communicator = serialcomm.EmbodySerial(serial_port="Dummy", serial_instance=serial)
 
         reader = communicator._EmbodySerial__reader
 
-        # Should have single consolidated executor
-        assert hasattr(reader, "_ReaderThread__callback_executor")
+        # Should have three separate executors
+        assert hasattr(reader, "_ReaderThread__message_listener_executor")
+        assert hasattr(reader, "_ReaderThread__response_message_listener_executor")
+        assert hasattr(reader, "_ReaderThread__file_download_listener_executor")
 
-        # Should not have old separate executors
-        assert not hasattr(reader, "_ReaderThread__message_listener_executor")
-        assert not hasattr(reader, "_ReaderThread__response_message_listener_executor")
-        assert not hasattr(reader, "_ReaderThread__file_download_listener_executor")
+        # Verify they are different instances
+        assert (
+            reader._ReaderThread__message_listener_executor != reader._ReaderThread__response_message_listener_executor
+        )
+        assert reader._ReaderThread__message_listener_executor != reader._ReaderThread__file_download_listener_executor
+        assert (
+            reader._ReaderThread__response_message_listener_executor
+            != reader._ReaderThread__file_download_listener_executor
+        )
 
         communicator.shutdown()
 
-    def test_executor_cleanup_on_stop(self):
-        """Verify executor is properly shut down."""
+    def test_executors_cleanup_on_stop(self):
+        """Verify all executors are properly shut down."""
         serial = DummySerial()
         communicator = serialcomm.EmbodySerial(serial_port="Dummy", serial_instance=serial)
 
         reader = communicator._EmbodySerial__reader
-        executor = reader._ReaderThread__callback_executor
+        msg_executor = reader._ReaderThread__message_listener_executor
+        rsp_executor = reader._ReaderThread__response_message_listener_executor
+        file_executor = reader._ReaderThread__file_download_listener_executor
 
         communicator.shutdown()
 
-        # Executor should be shut down
-        assert executor._shutdown is True
+        # All executors should be shut down
+        assert msg_executor._shutdown is True
+        assert rsp_executor._shutdown is True
+        assert file_executor._shutdown is True
