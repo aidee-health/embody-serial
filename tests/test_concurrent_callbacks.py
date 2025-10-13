@@ -54,10 +54,14 @@ class TestConcurrentCallbacks:
         assert len(start_events) == 3
         assert len(end_events) == 3
 
+        # Sort events by timestamp to ensure correct order for serial execution check
+        start_events_sorted = sorted(start_events, key=lambda x: x[1])
+        end_events_sorted = sorted(end_events, key=lambda x: x[1])
+
         # With serial execution (max_workers=1), callbacks should NOT overlap
         # Each callback should end before the next starts
-        for i in range(len(end_events) - 1):
-            assert end_events[i][1] <= start_events[i + 1][1], "Callbacks should execute serially with max_workers=1"
+        for i in range(len(end_events_sorted) - 1):
+            assert end_events_sorted[i][1] <= start_events_sorted[i + 1][1], "Callbacks should execute serially with max_workers=1"
 
         communicator.shutdown()
 
