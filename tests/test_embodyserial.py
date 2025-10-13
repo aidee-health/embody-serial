@@ -53,3 +53,15 @@ class DummySerial(SerialBase):
     def _reconfigure_port(self):
         """Implement unimplemented SerialBase method."""
         pass
+
+    def reset_input_buffer(self):
+        """Reset input buffer."""
+        pass
+
+    def reset_output_buffer(self):
+        """Reset output buffer."""
+        pass
+
+    def close(self):
+        """Close port."""
+        self.is_open = False

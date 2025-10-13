@@ -237,7 +237,7 @@ def __do_download_file(
 
         def on_file_download_failed(self, original_file_name: str, error: Exception) -> None:
             """Process file download failure."""
-            pass
+            logging.error(f"Download failed for {original_file_name}: {error}")
 
     listener = _DownloadListener()
     if retries == 0:
