@@ -7,6 +7,7 @@ import argparse
 import logging
 import shutil
 import sys
+import time
 from pathlib import Path
 
 import embodyserial.exceptions as embodyexceptions
@@ -174,6 +175,8 @@ def __download_files(
             delete=delete,
             retries=retries,
         )
+        time.sleep(0.01)
+        sys.stdout.flush()
 
 
 def __download_file(
