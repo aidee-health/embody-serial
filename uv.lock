@@ -40,7 +40,7 @@ wheels = [
 
 [[package]]
 name = "embody-serial"
-version = "1.0.35"
+version = "1.0.36"
 source = { editable = "." }
 dependencies = [
     { name = "embody-codec" },
