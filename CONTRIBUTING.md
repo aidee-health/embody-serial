@@ -113,6 +113,56 @@ Pre-commit hooks are installed automatically when you run `make install`, ensuri
 It is recommended to open an issue before starting work on anything.
 This will allow a chance to talk it over with the owners and validate your approach.
 
+## Code Quality Standards
+
+When contributing code, please follow these standards:
+
+### Logging
+
+This library follows Python logging best practices:
+
+- **Use module loggers**: Each module should have `logger = logging.getLogger(__name__)`
+- **Never configure root logger**: The library uses its own logger hierarchy (`embodyserial.*`)
+- **Performance guards for expensive operations**: Use `if logger.isEnabledFor(logging.LEVEL)` before expensive string formatting or calculations
+- **Simple operations don't need guards**: Direct logging calls for simple strings are fine
+
+Example:
+```python
+import logging
+logger = logging.getLogger(__name__)
+
+# Simple logging - no guard needed
+logger.info("Processing started")
+
+# Expensive operation - use guard
+if logger.isEnabledFor(logging.DEBUG):
+    logger.debug(f"Processed {len(data)} items: {expensive_format(data)}")
+```
+
+### Threading Architecture
+
+This library uses multiple thread executors for different purposes to prevent callback starvation:
+
+1. **Send Executor** (1 worker): Serializes all send operations
+2. **Message Callback Executor** (1 worker): Handles incoming messages from device
+3. **Response Callback Executor** (1 worker): Handles responses to sent messages (critical path)
+4. **File Download Callback Executor** (1 worker): Handles file transfer progress/completion
+
+**Why Three Separate Callback Executors?**
+
+The separation of callback executors prevents a critical deadlock scenario:
+- If message callbacks call `send()` and block waiting for responses
+- Response callbacks MUST execute to unblock those sends
+- Sharing a single executor would allow message callbacks to starve response callbacks
+- Dedicated response executor ensures responses can always execute
+
+**Guidelines:**
+- All public methods must be thread-safe
+- Use appropriate locks when accessing shared state
+- Avoid long-running operations in callbacks (they block their executor)
+- If callbacks need to do heavy work, offload to a separate thread
+- Document threading behavior in docstrings
+
 ## Using the Makefile
 
 This project includes a Makefile with convenient shortcuts for common development tasks:
@@ -151,12 +201,6 @@ flowchart TD
 - [Best practices for project structure according to pytest](https://docs.pytest.org/en/latest/explanation/goodpractices.html)
 - [Using GitHub as a private PiPI server](https://medium.com/network-letters/using-github-as-a-private-python-package-index-server-798a6e1cfdef)
 - [Project structure - rationale and best practice](https://blog.ionelmc.ro/2014/05/25/python-packaging)
-- [Hypermodern Cookiecutter Documentation](https://cookiecutter-hypermodern-python.readthedocs.io/)
-- [Hypermodern Cookiecutter GitHub](https://github.com/cjolowicz/cookiecutter-hypermodern-python)
 - [Threading Howto](https://superfastpython.com/threading-in-python/)
 
 [pull request]: https://github.com/aidee-health/embody-serial/pulls
-
-<!-- github-only -->
-
-[code of conduct]: CODE_OF_CONDUCT.md

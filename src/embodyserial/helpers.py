@@ -9,10 +9,13 @@ from datetime import UTC
 from embodycodec import attributes
 from embodycodec import codec
 from embodycodec import types
+from serial.serialutil import SerialException
 
 from embodyserial.embodyserial import EmbodySender
 from embodyserial.exceptions import MissingResponseError
 from embodyserial.exceptions import NackError
+
+logger = logging.getLogger(__name__)
 
 
 class EmbodySendHelper:
@@ -29,25 +32,29 @@ class EmbodySendHelper:
     def get_serial_no(self) -> str:
         response_attribute = self.__do_send_get_attribute_request(attributes.SerialNoAttribute.attribute_id)
         response = response_attribute.formatted_value()
-        assert response
+        if response is None:
+            raise ValueError("Serial number not available")
         return response
 
     def get_vendor(self) -> str:
         response_attribute = self.__do_send_get_attribute_request(attributes.VendorAttribute.attribute_id)
         response = response_attribute.formatted_value()
-        assert response
+        if response is None:
+            raise ValueError("Vendor information not available")
         return response
 
     def get_model(self) -> str:
         response_attribute = self.__do_send_get_attribute_request(attributes.ModelAttribute.attribute_id)
         response = response_attribute.formatted_value()
-        assert response
+        if response is None:
+            raise ValueError("Model information not available")
         return response
 
     def get_bluetooth_mac(self) -> str:
         response_attribute = self.__do_send_get_attribute_request(attributes.BluetoothMacAttribute.attribute_id)
         response = response_attribute.formatted_value()
-        assert response
+        if response is None:
+            raise ValueError("Bluetooth MAC address not available")
         return response
 
     def get_battery_level(self) -> int:
@@ -64,13 +71,15 @@ class EmbodySendHelper:
 
     def get_temperature(self) -> float:
         response_attribute = self.__do_send_get_attribute_request(attributes.TemperatureAttribute.attribute_id)
-        assert isinstance(response_attribute, attributes.TemperatureAttribute)
+        if not isinstance(response_attribute, attributes.TemperatureAttribute):
+            raise TypeError(f"Expected TemperatureAttribute, got {type(response_attribute).__name__}")
         return response_attribute.temp_celsius()
 
     def get_firmware_version(self) -> str:
         response_attribute = self.__do_send_get_attribute_request(attributes.FirmwareVersionAttribute.attribute_id)
         response = response_attribute.formatted_value()
-        assert response
+        if response is None:
+            raise ValueError("Firmware version not available")
         return response
 
     def get_on_body_state(self) -> bool:
@@ -91,7 +100,8 @@ class EmbodySendHelper:
             raise MissingResponseError
         if isinstance(response, codec.NackResponse):
             raise NackError(response)
-        assert isinstance(response, codec.ListFilesResponse)
+        if not isinstance(response, codec.ListFilesResponse):
+            raise TypeError(f"Expected ListFilesResponse, got {type(response).__name__}")
 
         files: list[tuple[str, int]] = []
         if len(response.files) == 0:
@@ -107,20 +117,21 @@ class EmbodySendHelper:
             raise MissingResponseError()
         if isinstance(response, codec.NackResponse):
             raise NackError(response)
-        assert isinstance(response, codec.DeleteFileResponse)
+        if not isinstance(response, codec.DeleteFileResponse):
+            raise TypeError(f"Expected DeleteFileResponse, got {type(response).__name__}")
         return True
 
     def delete_file_with_retries(self, file_name: str, retries=3, timeout_seconds_per_retry=0.5) -> bool:
         for retry in range(1, retries + 1):
             try:
                 if self.delete_file(file_name):
-                    logging.info(f"Deleted file on device: {file_name}")
+                    logger.info(f"Deleted file on device: {file_name}")
                     return True
-                logging.warn(f"Delete failed for {file_name} (attempt: {retry})")
+                logger.warning(f"Delete failed for {file_name} (attempt: {retry})")
                 time.sleep(timeout_seconds_per_retry)
                 continue
-            except Exception as e:
-                logging.warn(f"Delete failed for {file_name} (attempt: {retry}): {e}")
+            except (MissingResponseError, NackError, SerialException) as e:
+                logger.warning(f"Delete failed for {file_name} (attempt: {retry}): {e}")
                 time.sleep(timeout_seconds_per_retry)
                 continue
         return False
@@ -142,7 +153,8 @@ class EmbodySendHelper:
             raise MissingResponseError()
         if isinstance(response, codec.NackResponse):
             raise NackError(response)
-        assert isinstance(response, codec.ReformatDiskResponse)
+        if not isinstance(response, codec.ReformatDiskResponse):
+            raise TypeError(f"Expected ReformatDiskResponse, got {type(response).__name__}")
         return True
 
     def reset_device(self) -> bool:
@@ -168,7 +180,8 @@ class EmbodySendHelper:
             raise MissingResponseError()
         if isinstance(response, codec.NackResponse):
             raise NackError(response)
-        assert isinstance(response, codec.DeleteAllFilesResponse)
+        if not isinstance(response, codec.DeleteAllFilesResponse):
+            raise TypeError(f"Expected DeleteAllFilesResponse, got {type(response).__name__}")
         return True
 
     def set_on_body_detect(self, enable: bool) -> bool:
@@ -185,7 +198,8 @@ class EmbodySendHelper:
             raise MissingResponseError()
         if isinstance(response, codec.NackResponse):
             raise NackError(response)
-        assert isinstance(response, codec.GetAttributeResponse)
+        if not isinstance(response, codec.GetAttributeResponse):
+            raise TypeError(f"Expected GetAttributeResponse, got {type(response).__name__}")
         return response.value
 
     def __do_send_set_attribute_request(self, attr: attributes.Attribute) -> bool:

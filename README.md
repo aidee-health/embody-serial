@@ -59,13 +59,34 @@ print(f"Serial no: {send_helper.get_serial_no()}")
 embody_serial.shutdown()
 ```
 
-If you want to see more of what happens under the hood, activate debug logging before setting up `EmbodySerial`:
+## Logging
+
+This library uses Python's standard logging module and follows best practices for libraries:
+
+### For Library Users
+
+The library is **silent by default** - it won't produce any output unless you configure logging. To enable logging from the library:
 
 ```python
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+# Enable INFO level logging for embodyserial
+logging.getLogger('embodyserial').setLevel(logging.INFO)
+logging.getLogger('embodyserial').addHandler(logging.StreamHandler())
+
+# Or configure specific modules
+logging.getLogger('embodyserial.embodyserial').setLevel(logging.DEBUG)
 ```
+
+### For CLI Users
+
+The CLI configures logging automatically. Use `--log-level` to control verbosity:
+
+```bash
+embody-serial --get serialno --log-level DEBUG
+```
+
+Available levels: CRITICAL, WARNING, INFO, DEBUG (default: WARNING)
 
 ## Using the application from the command line
 

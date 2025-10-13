@@ -34,6 +34,7 @@ from embodyserial.listeners import FileDownloadListener
 from embodyserial.listeners import MessageListener
 from embodyserial.listeners import ResponseMessageListener
 
+logger = logging.getLogger(__name__)
 
 BAUD_RATE = 115200
 DEFAULT_READ_TIMEOUT = 5
@@ -71,10 +72,10 @@ class EmbodySerial(ConnectionListener, EmbodySender):
     ) -> None:
         if serial_port:
             self.__port = serial_port
-            logging.info(f"Using serial port {self.__port}")
+            logger.info(f"Using serial port {self.__port}")
         elif not serial_instance:
             self.__port = EmbodySerial.find_first_serial_port()
-            logging.info(f"Using serial port {self.__port}")
+            logger.info(f"Using serial port {self.__port}")
         self.__shutdown_lock = threading.Lock()
         if serial_instance:
             self.__serial = serial_instance
@@ -83,7 +84,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             if os.name == "nt" and WINDOWS_RX_BUFFER and WINDOWS_TX_BUFFER:
                 buffer_set = self.__serial.set_buffer_size(rx_size=WINDOWS_RX_BUFFER, tx_size=WINDOWS_TX_BUFFER)
                 if buffer_set and buffer_set is not True:
-                    logging.warning(f"Failed to set buffer size for windows: {buffer_set}")
+                    logger.warning(f"Failed to set buffer size for windows: {buffer_set}")
         self.__connected = True
         self.__sender = _MessageSender(self.__serial)
         self.__reader = _ReaderThread(serial_instance=self.__serial)
@@ -116,20 +117,20 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             if self.__serial.is_open:
                 try:
                     self.__serial.reset_input_buffer()
-                except Exception as e:
-                    logging.debug(f"Failed to reset input buffer: {e}")
+                except (OSError, SerialException) as e:
+                    logger.debug(f"Failed to reset input buffer: {e}")
                 try:
                     self.__serial.reset_output_buffer()
-                except Exception as e:
-                    logging.debug(f"Failed to reset output buffer: {e}")
+                except (OSError, SerialException) as e:
+                    logger.debug(f"Failed to reset output buffer: {e}")
                 try:
                     self.__serial.close()
-                except Exception as e:
-                    logging.warn(f"Failed to close port: {e}")
+                except (OSError, SerialException) as e:
+                    logger.warning(f"Failed to close port: {e}")
 
     def on_connected(self, connected: bool) -> None:
         """Implement connection listener interface and handle disconnect events"""
-        logging.debug(f"Connection event: {connected}")
+        logger.debug(f"Connection event: {connected}")
         if not connected:
             self.shutdown()
 
@@ -166,19 +167,20 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         delay: float = 0.0,
     ) -> str | None:
         for retry in range(1, retries + 1):
-            if not self.__connected:
-                logging.warn("Disconnected, aborting download")
-                return None
+            with self.__shutdown_lock:
+                if not self.__connected:
+                    logger.warning("Disconnected, aborting download")
+                    return None
             try:
                 stored_file = self.download_file(file_name, file_size, listener, timeout, delay)
                 if stored_file:
-                    logging.info(f"File {file_name} downloaded to: {stored_file}")
+                    logger.info(f"File {file_name} downloaded to: {stored_file}")
                     return stored_file
-                logging.warn(f"Download failed for {file_name} (attempt: {retry})")
+                logger.warning(f"Download failed for {file_name} (attempt: {retry})")
                 time.sleep(timeout_seconds_per_retry)
                 continue
-            except Exception as e:
-                logging.warn(f"Download failed for {file_name} (attempt: {retry}): {e}")
+            except (embodyexceptions.TimeoutError, embodyexceptions.CrcError, SerialException) as e:
+                logger.warning(f"Download failed for {file_name} (attempt: {retry}): {e}")
                 time.sleep(timeout_seconds_per_retry)
                 continue
         return None
@@ -216,24 +218,30 @@ class EmbodySerial(ConnectionListener, EmbodySender):
     @staticmethod
     def __port_is_alive(port: SerialBase) -> bool:
         """Check if port has an active embody device."""
-        logging.info(f"Checking candidate port: {port}")
+        logger.info(f"Checking candidate port: {port}")
+        ser = None
         try:
             ser = serial.Serial(port=port.device, baudrate=115200, timeout=1)
             in_waiting = ser.in_waiting
             if in_waiting and in_waiting > 0:
-                logging.info(f"Flushing input buffer ({in_waiting} bytes)")
+                logger.info(f"Flushing input buffer ({in_waiting} bytes)")
                 ser.read(in_waiting)
             ser.reset_input_buffer()
             ser.reset_output_buffer()
             ser.write(codec.Heartbeat().encode())
             expected_response = codec.HeartbeatResponse().encode()
             response = ser.read(len(expected_response))
-            logging.debug(f"Response: {response.hex()} (expected: {expected_response.hex()})")
-            ser.close()
+            logger.debug(f"Response: {response.hex()} (expected: {expected_response.hex()})")
             return response == expected_response
-        except Exception as e:
-            logging.info(f"Exception raised for port check: {e}")
+        except (SerialException, OSError) as e:
+            logger.info(f"Exception raised for port check: {e}")
             return False
+        finally:
+            if ser and ser.is_open:
+                try:
+                    ser.close()
+                except (OSError, SerialException):
+                    pass
 
 
 class _MessageSender(ResponseMessageListener):
@@ -257,7 +265,7 @@ class _MessageSender(ResponseMessageListener):
 
         Sets the local response message and notifies the waiting sender thread
         """
-        logging.debug(f"Response message received: {msg}")
+        logger.debug(f"Response message received: {msg}")
         self.__current_response_message = msg
         self.__response_event.set()
 
@@ -269,7 +277,7 @@ class _MessageSender(ResponseMessageListener):
         try:
             return future.result(timeout + 1 if timeout else 1)
         except TimeoutError:
-            logging.warning(
+            logger.warning(
                 f"No response received for message within timeout: {msg}",
                 exc_info=False,
             )
@@ -284,12 +292,12 @@ class _MessageSender(ResponseMessageListener):
         with self._send_lock:
             if not self.__serial.is_open:
                 return None
-            logging.debug(f"Sending message: {msg}, encoded: {msg.encode().hex()}")
+            logger.debug(f"Sending message: {msg}, encoded: {msg.encode().hex()}")
             try:
                 self.__response_event.clear()
                 self.__serial.write(msg.encode())
             except serial.SerialException as e:
-                logging.warning(f"Error sending message: {e!s}", exc_info=False)
+                logger.warning(f"Error sending message: {e!s}", exc_info=False)
                 return None
             if wait_for_response_secs and wait_for_response_secs > 0:
                 if self.__response_event.wait(wait_for_response_secs):
@@ -322,6 +330,12 @@ class _ReaderThread(threading.Thread):
         self.daemon = True
         self.name = "reader"
         self.__serial = serial_instance
+        # Three separate executors to prevent callback type starvation:
+        # - Message callbacks may be slow and call send() - isolated in rcv-worker
+        # - Response callbacks are critical path for unblocking senders - dedicated rsp-worker ensures no starvation
+        # - File download callbacks may be frequent during transfers - isolated in dwnld-worker
+        # This architecture prevents deadlock when message callbacks call send() and wait for responses,
+        # because response callbacks have their own dedicated worker and cannot be starved.
         self.__message_listener_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rcv-worker")
         self.__response_message_listener_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rsp-worker")
         self.__file_download_listener_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="dwnld-worker")
@@ -355,7 +369,7 @@ class _ReaderThread(threading.Thread):
         self.__file_mode = True
         try:
             uart = codec.GetFileUart(types.File(original_file_name))
-            logging.debug(f"Sending message: {uart}, encoded: {uart.encode().hex()}")
+            logger.debug(f"Sending message: {uart}, encoded: {uart.encode().hex()}")
             self.__serial.write(uart.encode())
             if not self.__file_event.wait(timeout):
                 raise embodyexceptions.MissingResponseError("No file received within timeout")
@@ -402,19 +416,19 @@ class _ReaderThread(threading.Thread):
                 raw_header = b""
             except serial.SerialException as ser:
                 # probably some I/O problem such as disconnected USB serial adapters -> exit
-                logging.info(f"Serial port is closed (SerialException) {ser!s}")
+                logger.info(f"Serial port is closed (SerialException) {ser!s}")
                 break
             except TypeError:
                 # read returned empty buffer
                 break
             except OSError as ose:
-                logging.info(f"OS Error reading from socket (OSError): {ose!s}")
+                logger.info(f"OS Error reading from socket (OSError): {ose!s}")
                 break
             except ValueError as ve:
-                logging.info(f"ValueError reading from socket (Probably disconnected): {ve!s}")
+                logger.info(f"ValueError reading from socket (Probably disconnected): {ve!s}")
                 break
             except Exception as e:
-                logging.info(f"Exception reading from socket: {e!s} - disconnecting")
+                logger.info(f"Unexpected exception reading from socket: {e!s} - disconnecting")
                 break
         self.alive = False
         self.__file_event.set()
@@ -437,7 +451,7 @@ class _ReaderThread(threading.Thread):
                     curr_len = len(chunk)
                     in_memory_buffer.extend(chunk)
                     remaining_size -= curr_len
-                    # logging.warning(f"Loop {str(loop_count)} time {str(now-start)} chunk {str(curr_len)}", exc_info=False)
+                    # logger.warning(f"Loop {str(loop_count)} time {str(now-start)} chunk {str(curr_len)}", exc_info=False)
                     if now > (last + 0.5):  # Update every 500ms
                         self.__async_notify_file_download_in_progress(
                             f,
@@ -470,7 +484,7 @@ class _ReaderThread(threading.Thread):
                 100,
                 round((f.file_size / 1024) / (end - start), 2),
             )
-            logging.debug(
+            logger.debug(
                 f"Read {round(f.file_size / 1024, 2)}KB in {end - start} secs "
                 f"- {round((f.file_size / 1024) / (end - start), 2)}KB/s"
             )
@@ -482,7 +496,7 @@ class _ReaderThread(threading.Thread):
                         f"Invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}"
                     )
                 else:
-                    logging.warning(
+                    logger.warning(
                         f"IGNORING invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}"
                     )
             tmp = tempfile.NamedTemporaryFile(delete=False)
@@ -533,9 +547,9 @@ class _ReaderThread(threading.Thread):
 
     def __read_protocol_message(self, raw_header: bytes) -> None:
         """Read next message from input."""
-        logging.debug(f"RECEIVE: Received header {raw_header.hex()}")
+        logger.debug(f"RECEIVE: Received header {raw_header.hex()}")
         msg_type, length = struct.unpack(">BH", raw_header)
-        logging.debug(f"RECEIVE: Received msg type: {msg_type}, length: {length}")
+        logger.debug(f"RECEIVE: Received msg type: {msg_type}, length: {length}")
         if length > 20480:
             raise ValueError(f"Message length too long: {length}")
         remaining_length = length - 3
@@ -545,15 +559,15 @@ class _ReaderThread(threading.Thread):
             remaining_length -= 1024
             time.sleep(0.001)
         if raw_message:
-            logging.debug(
+            logger.debug(
                 f"RECEIVE: Received raw msg: {raw_message.hex() if len(raw_message) <= 1024 else raw_message[0:1023].hex()}"
             )
             try:
                 msg = codec.decode(raw_message)
                 if msg:
                     self.__handle_incoming_message(msg)
-            except Exception as e:
-                logging.warning(
+            except (struct.error, ValueError, TypeError) as e:
+                logger.warning(
                     f"Error processing protocol message, error: {e!s}",
                     exc_info=True,
                 )
@@ -565,7 +579,7 @@ class _ReaderThread(threading.Thread):
             self.__handle_response_message(msg)
 
     def __handle_message(self, msg: codec.Message) -> None:
-        logging.debug(f"Handling new message: {msg}")
+        logger.debug(f"Handling new message: {msg}")
         if len(self.__message_listeners) == 0:
             return
         for listener in self.__message_listeners:
@@ -576,13 +590,13 @@ class _ReaderThread(threading.Thread):
         try:
             listener.message_received(msg)
         except Exception as e:
-            logging.warning(f"Error notifying listener: {e!s}", exc_info=True)
+            logger.warning(f"Error notifying listener: {e!s}", exc_info=True)
 
     def add_message_listener(self, listener: MessageListener) -> None:
         self.__message_listeners.append(listener)
 
     def __handle_response_message(self, msg: codec.Message) -> None:
-        logging.debug(f"Handling new response message: {msg}")
+        logger.debug(f"Handling new response message: {msg}")
         if len(self.__response_message_listeners) == 0:
             return
         for listener in self.__response_message_listeners:
@@ -593,7 +607,7 @@ class _ReaderThread(threading.Thread):
         try:
             listener.response_message_received(msg)
         except Exception as e:
-            logging.warning(f"Error notifying listener: {e!s}", exc_info=True)
+            logger.warning(f"Error notifying listener: {e!s}", exc_info=True)
 
     def add_response_message_listener(self, listener: ResponseMessageListener) -> None:
         self.__response_message_listeners.append(listener)
@@ -612,7 +626,7 @@ class _ReaderThread(threading.Thread):
         try:
             listener.on_connected(connected)
         except Exception as e:
-            logging.warning(f"Error notifying connection listener: {e!s}", exc_info=True)
+            logger.warning(f"Error notifying connection listener: {e!s}", exc_info=True)
 
     @staticmethod
     def __notify_file_download_progress(
@@ -625,7 +639,7 @@ class _ReaderThread(threading.Thread):
         try:
             listener.on_file_download_progress(original_file_name, size, progress, kbps)
         except Exception as e:
-            logging.warning(f"Error notifying file download listener: {e!s}", exc_info=True)
+            logger.warning(f"Error notifying file download listener: {e!s}", exc_info=True)
 
     @staticmethod
     def __notify_file_download_complete(
@@ -634,7 +648,7 @@ class _ReaderThread(threading.Thread):
         try:
             listener.on_file_download_complete(original_file_name, path, kbps)
         except Exception as e:
-            logging.warning(f"Error notifying file download listener: {e!s}", exc_info=True)
+            logger.warning(f"Error notifying file download listener: {e!s}", exc_info=True)
 
     @staticmethod
     def __notify_file_download_failed(
@@ -643,4 +657,4 @@ class _ReaderThread(threading.Thread):
         try:
             listener.on_file_download_failed(original_file_name, error)
         except Exception as e:
-            logging.warning(f"Error notifying file download listener: {e!s}", exc_info=True)
+            logger.warning(f"Error notifying file download listener: {e!s}", exc_info=True)
