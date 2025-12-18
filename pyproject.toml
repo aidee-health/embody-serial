@@ -66,16 +66,46 @@ lines_after_imports = 2
 python-version = "3.11"  # Matches project requires-python
 
 [tool.ty.rules]
-# Core type safety rules (stricter than previous mypy configuration)
-unresolved-reference = "error"      # Catch undefined names
-invalid-assignment = "error"        # Catch type mismatches
-invalid-argument-type = "error"     # Catch wrong argument types
-call-non-callable = "error"         # Catch calling non-functions
+# Core type safety rules
+unresolved-reference = "error"
+invalid-assignment = "error"
+invalid-argument-type = "error"
+call-non-callable = "error"
 
-# Additional strictness
-deprecated = "warn"                 # Warn on deprecated usage
-redundant-cast = "warn"            # Catch unnecessary casts
-# Future consideration: Enable more strict rules after team is comfortable
+# Runtime safety (Tier 1)
+invalid-return-type = "error"
+missing-argument = "error"
+too-many-positional-arguments = "error"
+unknown-argument = "error"
+non-subscriptable = "error"
+not-iterable = "error"
+
+# Exception handling (Tier 1)
+invalid-exception-caught = "error"
+invalid-raise = "error"
+
+# Class safety (Tier 1)
+invalid-method-override = "error"
+invalid-base = "error"
+
+# Attribute access (Tier 1)
+unresolved-import = "error"
+unresolved-attribute = "error"
+
+# Indexing and slicing (Tier 2)
+index-out-of-bounds = "error"
+zero-stepsize-in-slice = "error"
+
+# Generic types (Tier 2)
+invalid-type-arguments = "error"
+invalid-generic-class = "error"
+
+# Code quality warnings
+deprecated = "warn"
+redundant-cast = "warn"
+unused-ignore-comment = "warn"
+possibly-unresolved-reference = "warn"
+ambiguous-protocol-member = "warn"
 
 [tool.ty.terminal]
 output-format = "full"             # Provides detailed error messages with full context

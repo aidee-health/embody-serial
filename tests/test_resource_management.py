@@ -115,9 +115,9 @@ class TestThreadExecutorManagement:
         communicator = serialcomm.EmbodySerial(serial_port="Dummy", serial_instance=serial)
 
         reader = communicator._EmbodySerial__reader  # type: ignore[attr-defined]
-        msg_executor = reader._ReaderThread__message_listener_executor  # type: ignore[attr-defined]
-        rsp_executor = reader._ReaderThread__response_message_listener_executor  # type: ignore[attr-defined]
-        file_executor = reader._ReaderThread__file_download_listener_executor  # type: ignore[attr-defined]
+        msg_executor = reader._ReaderThread__message_listener_executor
+        rsp_executor = reader._ReaderThread__response_message_listener_executor
+        file_executor = reader._ReaderThread__file_download_listener_executor
 
         communicator.shutdown()
 

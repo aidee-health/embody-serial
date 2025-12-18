@@ -22,7 +22,7 @@ def test_get_current_time_success() -> None:
 
 def test_get_current_time_no_response() -> None:
     sender: helpers.EmbodySender = Mock()
-    sender.send = Mock(return_value=None)  # type: ignore
+    sender.send = Mock(return_value=None)
     send_helper = helpers.EmbodySendHelper(sender=sender)
     with pytest.raises(MissingResponseError):
         send_helper.get_current_time()
@@ -31,7 +31,7 @@ def test_get_current_time_no_response() -> None:
 def test_get_current_time_with_exception() -> None:
     """Test successful get current time."""
     sender: helpers.EmbodySender = Mock()
-    sender.send = Mock(side_effect=SerialException)  # type: ignore
+    sender.send = Mock(side_effect=SerialException)
     send_helper = helpers.EmbodySendHelper(sender=sender)
     with pytest.raises(SerialException):
         send_helper.get_current_time()
@@ -74,7 +74,7 @@ def test_get_firmware_version() -> None:
 
 def __create_sender_mock(attr: attributes.Attribute) -> helpers.EmbodySender:
     sender: helpers.EmbodySender = Mock()
-    sender.send = Mock(  # type: ignore
+    sender.send = Mock(
         return_value=codec.GetAttributeResponse(
             attribute_id=attr.attribute_id,
             changed_at=int(datetime.now().timestamp() * 1000),
@@ -87,7 +87,7 @@ def __create_sender_mock(attr: attributes.Attribute) -> helpers.EmbodySender:
 
 def __create_set_sender_mock() -> helpers.EmbodySender:
     sender: helpers.EmbodySender = Mock()
-    sender.send = Mock(return_value=codec.SetAttributeResponse())  # type: ignore
+    sender.send = Mock(return_value=codec.SetAttributeResponse())
     return sender
 
 
@@ -100,7 +100,7 @@ def test_get_on_body_detect_success() -> None:
 
 def test_get_on_body_detect_no_response() -> None:
     sender: helpers.EmbodySender = Mock()
-    sender.send = Mock(return_value=None)  # type: ignore
+    sender.send = Mock(return_value=None)
     send_helper = helpers.EmbodySendHelper(sender=sender)
     with pytest.raises(MissingResponseError):
         send_helper.get_on_body_detect()
@@ -108,7 +108,7 @@ def test_get_on_body_detect_no_response() -> None:
 
 def test_get_on_body_detect_with_exception() -> None:
     sender: helpers.EmbodySender = Mock()
-    sender.send = Mock(side_effect=SerialException)  # type: ignore
+    sender.send = Mock(side_effect=SerialException)
     send_helper = helpers.EmbodySendHelper(sender=sender)
     with pytest.raises(SerialException):
         send_helper.get_on_body_detect()
@@ -123,7 +123,7 @@ def test_set_on_body_detect_success() -> None:
 
 def test_set_on_body_detect_no_response() -> None:
     sender: helpers.EmbodySender = Mock()
-    sender.send = Mock(return_value=None)  # type: ignore
+    sender.send = Mock(return_value=None)
     send_helper = helpers.EmbodySendHelper(sender=sender)
     with pytest.raises(MissingResponseError):
         send_helper.set_on_body_detect(True)
@@ -132,7 +132,7 @@ def test_set_on_body_detect_no_response() -> None:
 
 def test_set_on_body_detect_with_exception() -> None:
     sender: helpers.EmbodySender = Mock()
-    sender.send = Mock(side_effect=SerialException)  # type: ignore
+    sender.send = Mock(side_effect=SerialException)
     send_helper = helpers.EmbodySendHelper(sender=sender)
     with pytest.raises(SerialException):
         send_helper.set_on_body_detect(True)

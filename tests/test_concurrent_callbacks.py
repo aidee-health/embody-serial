@@ -42,7 +42,7 @@ class TestConcurrentCallbacks:
 
         # Send one message - all three listeners will be called
         reader = communicator._EmbodySerial__reader  # type: ignore[attr-defined]
-        reader._ReaderThread__handle_message(codec.Heartbeat())  # type: ignore[attr-defined]
+        reader._ReaderThread__handle_message(codec.Heartbeat())
 
         # Wait for all callbacks to complete
         time.sleep(0.3)
@@ -84,7 +84,7 @@ class TestConcurrentCallbacks:
 
         # Trigger callback that will attempt to send
         reader = communicator._EmbodySerial__reader  # type: ignore[attr-defined]
-        reader._ReaderThread__handle_message(codec.Heartbeat())  # type: ignore[attr-defined]
+        reader._ReaderThread__handle_message(codec.Heartbeat())
 
         # Should complete without deadlock
         assert send_completed.wait(timeout=2)
@@ -154,7 +154,7 @@ class TestConcurrentCallbacks:
 
         # Trigger callback - should still execute despite download
         reader = communicator._EmbodySerial__reader  # type: ignore[attr-defined]
-        reader._ReaderThread__handle_message(codec.Heartbeat())  # type: ignore[attr-defined]
+        reader._ReaderThread__handle_message(codec.Heartbeat())
 
         # Callback should complete
         assert callback_executed.wait(timeout=1)
