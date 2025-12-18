@@ -41,8 +41,8 @@ class TestConcurrentCallbacks:
             communicator.add_message_listener(listener)
 
         # Send one message - all three listeners will be called
-        reader = communicator._EmbodySerial__reader
-        reader._ReaderThread__handle_message(codec.Heartbeat())
+        reader = communicator._EmbodySerial__reader  # type: ignore[attr-defined]
+        reader._ReaderThread__handle_message(codec.Heartbeat())  # type: ignore[attr-defined]
 
         # Wait for all callbacks to complete
         time.sleep(0.3)
@@ -83,8 +83,8 @@ class TestConcurrentCallbacks:
         communicator.add_message_listener(SendingListener())
 
         # Trigger callback that will attempt to send
-        reader = communicator._EmbodySerial__reader
-        reader._ReaderThread__handle_message(codec.Heartbeat())
+        reader = communicator._EmbodySerial__reader  # type: ignore[attr-defined]
+        reader._ReaderThread__handle_message(codec.Heartbeat())  # type: ignore[attr-defined]
 
         # Should complete without deadlock
         assert send_completed.wait(timeout=2)
@@ -110,7 +110,7 @@ class TestConcurrentCallbacks:
                 response_received.set()
 
         communicator.add_message_listener(TestMessageListener())
-        reader = communicator._EmbodySerial__reader
+        reader = communicator._EmbodySerial__reader  # type: ignore[attr-defined]
         reader.add_response_message_listener(TestResponseListener())
 
         # Send both types of messages
@@ -138,7 +138,7 @@ class TestConcurrentCallbacks:
 
         # Start a file download in background
         def download_file():
-            with patch.object(communicator._EmbodySerial__reader, "download_file") as mock_download:
+            with patch.object(communicator._EmbodySerial__reader, "download_file") as mock_download:  # type: ignore[attr-defined]
                 import tempfile
 
                 with tempfile.NamedTemporaryFile(suffix=".bin", delete=False) as tmp:
@@ -153,8 +153,8 @@ class TestConcurrentCallbacks:
         time.sleep(0.05)
 
         # Trigger callback - should still execute despite download
-        reader = communicator._EmbodySerial__reader
-        reader._ReaderThread__handle_message(codec.Heartbeat())
+        reader = communicator._EmbodySerial__reader  # type: ignore[attr-defined]
+        reader._ReaderThread__handle_message(codec.Heartbeat())  # type: ignore[attr-defined]
 
         # Callback should complete
         assert callback_executed.wait(timeout=1)
@@ -187,7 +187,7 @@ class TestConcurrentCallbacks:
         communicator.add_message_listener(BlockingMessageListener())
 
         # Add response listener
-        reader = communicator._EmbodySerial__reader
+        reader = communicator._EmbodySerial__reader  # type: ignore[attr-defined]
         reader.add_response_message_listener(FastResponseListener())
 
         # Trigger blocking message callback

@@ -19,6 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError
 from dataclasses import dataclass
 from operator import attrgetter
+from typing import Any
 
 import serial
 import serial.tools.list_ports
@@ -216,7 +217,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         return ports[0]
 
     @staticmethod
-    def __port_is_alive(port: SerialBase) -> bool:
+    def __port_is_alive(port: Any) -> bool:
         """Check if port has an active embody device."""
         logger.info(f"Checking candidate port: {port}")
         ser = None
@@ -395,7 +396,7 @@ class _ReaderThread(threading.Thread):
         self.alive = False
         if hasattr(self.__serial, "cancel_read"):
             if self.__serial.is_open:
-                self.__serial.cancel_read()
+                self.__serial.cancel_read()  # type: ignore[misc]
         self.__message_listener_executor.shutdown(wait=True, cancel_futures=False)
         self.__response_message_listener_executor.shutdown(wait=True, cancel_futures=False)
         self.__file_download_listener_executor.shutdown(wait=True, cancel_futures=False)
@@ -555,7 +556,7 @@ class _ReaderThread(threading.Thread):
         remaining_length = length - 3
         raw_message = raw_header
         while remaining_length > 0:
-            raw_message += self.__serial.read(size=min(remaining_length, 1024))
+            raw_message += self.__serial.read(min(remaining_length, 1024))
             remaining_length -= 1024
             time.sleep(0.001)
         if raw_message:
