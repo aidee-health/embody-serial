@@ -61,7 +61,7 @@ def main(args=None):
     send_helper = EmbodySendHelper(sender=embody_serial)
     try:
         if parsed_args.get:
-            print(f"{getattr(send_helper, get_attributes_dict.get(parsed_args.get))()}")
+            print(f"{getattr(send_helper, get_attributes_dict[parsed_args.get])()}")
         elif parsed_args.get_all:
             __get_all_attributes(send_helper)
         elif parsed_args.set_time:
@@ -138,11 +138,11 @@ def main(args=None):
 
 
 def __get_all_attributes(send_helper):
-    for attrib in get_attributes_dict.keys():
+    for attrib, method_name in get_attributes_dict.items():
         sys.stdout.write(f"{attrib}: ")
         sys.stdout.flush()
         try:
-            print(getattr(send_helper, get_attributes_dict.get(attrib))())
+            print(getattr(send_helper, method_name)())
         except Exception as e:
             print(f"Error: {e}")
 

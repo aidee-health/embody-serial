@@ -8,10 +8,12 @@ from serial.serialutil import SerialException
 
 from embodyserial.exceptions import MissingResponseError, NackError
 from embodyserial.helpers import EmbodySendHelper
-from tests.test_embodyserial import DummySerial
+from tests.conftest import DummySerial
 from embodyserial import embodyserial as serialcomm
 
 
+@pytest.mark.error_handling
+@pytest.mark.fast
 class TestHelperValidation:
     """Test helper method validation improvements."""
 
@@ -110,6 +112,7 @@ class TestHelperValidation:
         communicator.shutdown()
 
 
+@pytest.mark.error_handling
 class TestExceptionSpecificity:
     """Test specific exception handling instead of generic catches."""
 

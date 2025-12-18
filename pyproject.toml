@@ -20,10 +20,9 @@ dev = [
     "pytest>=7.2.0",
     "Pygments>=2.10.0",
     "ruff>=0.11.5",
-    "mypy>=0.930",
+    "ty>=0.0.2",
     "pre-commit>=2.16.0",
     "pre-commit-hooks>=4.1.0",
-    "types-pytz>=2024.1.0",
 ]
 
 [project.urls]
@@ -46,6 +45,15 @@ include = ["src/embodyserial"]
 [tool.hatch.build.targets.wheel.sources]
 "src/embodyserial" = "embodyserial"
 
+[tool.pytest.ini_options]
+markers = [
+    "fast: Fast unit tests without EmbodySerial initialization (< 1s)",
+    "timing: Tests that use intentional delays to verify timing/threading behavior",
+    "lifecycle: Tests focused on initialization, connection, and shutdown behavior",
+    "api: Tests of the helper API and message handling",
+    "error_handling: Tests focused on exception handling and validation",
+]
+
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]
 tests = ["tests", "*/tests"]
@@ -63,14 +71,54 @@ profile = "black"
 force_single_line = true
 lines_after_imports = 2
 
-[tool.mypy]
-strict = false
-warn_unreachable = true
-pretty = true
-show_column_numbers = true
-show_error_codes = true
-show_error_context = true
-ignore_missing_imports = true
+[tool.ty.environment]
+python-version = "3.11"  # Matches project requires-python
+
+[tool.ty.rules]
+# Core type safety rules
+unresolved-reference = "error"
+invalid-assignment = "error"
+invalid-argument-type = "error"
+call-non-callable = "error"
+
+# Runtime safety (Tier 1)
+invalid-return-type = "error"
+missing-argument = "error"
+too-many-positional-arguments = "error"
+unknown-argument = "error"
+non-subscriptable = "error"
+not-iterable = "error"
+
+# Exception handling (Tier 1)
+invalid-exception-caught = "error"
+invalid-raise = "error"
+
+# Class safety (Tier 1)
+invalid-method-override = "error"
+invalid-base = "error"
+
+# Attribute access (Tier 1)
+unresolved-import = "error"
+unresolved-attribute = "error"
+
+# Indexing and slicing (Tier 2)
+index-out-of-bounds = "error"
+zero-stepsize-in-slice = "error"
+
+# Generic types (Tier 2)
+invalid-type-arguments = "error"
+invalid-generic-class = "error"
+
+# Code quality warnings
+deprecated = "warn"
+redundant-cast = "warn"
+unused-ignore-comment = "warn"
+possibly-unresolved-reference = "warn"
+ambiguous-protocol-member = "warn"
+
+[tool.ty.terminal]
+output-format = "full"             # Provides detailed error messages with full context
+error-on-warning = false           # Don't fail on warnings initially
 
 [tool.ruff]
 target-version = "py311"

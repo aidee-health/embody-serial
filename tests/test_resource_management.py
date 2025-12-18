@@ -2,12 +2,14 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from serial.serialutil import SerialException
 
 from embodyserial import embodyserial as serialcomm
-from tests.test_embodyserial import DummySerial
+from tests.conftest import DummySerial
 
 
+@pytest.mark.lifecycle
 class TestPortManagement:
     """Test serial port resource management."""
 
@@ -23,7 +25,7 @@ class TestPortManagement:
             mock_port = MagicMock()
             mock_port.device = "/dev/ttyUSB0"
 
-            result = serialcomm.EmbodySerial._EmbodySerial__port_is_alive(mock_port)
+            result = serialcomm.EmbodySerial._EmbodySerial__port_is_alive(mock_port)  # type: ignore[attr-defined]
 
             assert result is False
             mock_instance.close.assert_called_once()
@@ -40,12 +42,13 @@ class TestPortManagement:
             mock_port = MagicMock()
             mock_port.device = "/dev/ttyUSB0"
 
-            result = serialcomm.EmbodySerial._EmbodySerial__port_is_alive(mock_port)
+            result = serialcomm.EmbodySerial._EmbodySerial__port_is_alive(mock_port)  # type: ignore[attr-defined]
 
             assert result is True
             mock_instance.close.assert_called_once()
 
 
+@pytest.mark.lifecycle
 class TestShutdownResilience:
     """Test graceful shutdown handling."""
 
@@ -82,6 +85,7 @@ class TestShutdownResilience:
         communicator.shutdown()
 
 
+@pytest.mark.lifecycle
 class TestThreadExecutorManagement:
     """Test thread executor separation for starvation prevention."""
 
@@ -90,7 +94,7 @@ class TestThreadExecutorManagement:
         serial = DummySerial()
         communicator = serialcomm.EmbodySerial(serial_port="Dummy", serial_instance=serial)
 
-        reader = communicator._EmbodySerial__reader
+        reader = communicator._EmbodySerial__reader  # type: ignore[attr-defined]
 
         # Should have three separate executors
         assert hasattr(reader, "_ReaderThread__message_listener_executor")
@@ -114,7 +118,7 @@ class TestThreadExecutorManagement:
         serial = DummySerial()
         communicator = serialcomm.EmbodySerial(serial_port="Dummy", serial_instance=serial)
 
-        reader = communicator._EmbodySerial__reader
+        reader = communicator._EmbodySerial__reader  # type: ignore[attr-defined]
         msg_executor = reader._ReaderThread__message_listener_executor
         rsp_executor = reader._ReaderThread__response_message_listener_executor
         file_executor = reader._ReaderThread__file_download_listener_executor
