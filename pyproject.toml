@@ -45,6 +45,15 @@ include = ["src/embodyserial"]
 [tool.hatch.build.targets.wheel.sources]
 "src/embodyserial" = "embodyserial"
 
+[tool.pytest.ini_options]
+markers = [
+    "fast: Fast unit tests without EmbodySerial initialization (< 1s)",
+    "timing: Tests that use intentional delays to verify timing/threading behavior",
+    "lifecycle: Tests focused on initialization, connection, and shutdown behavior",
+    "api: Tests of the helper API and message handling",
+    "error_handling: Tests focused on exception handling and validation",
+]
+
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]
 tests = ["tests", "*/tests"]

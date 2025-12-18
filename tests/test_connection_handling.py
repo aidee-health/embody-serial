@@ -1,9 +1,12 @@
 """Test connection and disconnection handling."""
 
+import pytest
+
 from embodyserial import embodyserial as serialcomm
-from tests.test_embodyserial import DummySerial
+from tests.conftest import DummySerial
 
 
+@pytest.mark.lifecycle
 class TestConnectionHandling:
     """Test connection state management."""
 

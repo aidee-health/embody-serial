@@ -4,13 +4,15 @@ import threading
 import time
 from unittest.mock import patch
 
+import pytest
 from embodycodec import codec
 
 from embodyserial import embodyserial as serialcomm
 from embodyserial.listeners import MessageListener, ResponseMessageListener
-from tests.test_embodyserial import DummySerial
+from tests.conftest import DummySerial
 
 
+@pytest.mark.timing
 class TestConcurrentCallbacks:
     """Test that callbacks can run concurrently without deadlock."""
 

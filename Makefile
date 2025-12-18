@@ -18,6 +18,21 @@ test: ## Test the code with pytest
 	@echo "🚀 Testing code: Running pytest"
 	@uv run python -m pytest
 
+.PHONY: test-fast
+test-fast: ## Run fast unit tests only
+	@echo "🚀 Testing code: Running fast tests"
+	@uv run python -m pytest -m fast
+
+.PHONY: test-no-timing
+test-no-timing: ## Run all tests except timing-sensitive ones
+	@echo "🚀 Testing code: Running tests without timing-sensitive tests"
+	@uv run python -m pytest -m "not timing"
+
+.PHONY: test-lifecycle
+test-lifecycle: ## Run lifecycle/connection tests
+	@echo "🚀 Testing code: Running lifecycle tests"
+	@uv run python -m pytest -m lifecycle
+
 .PHONY: build
 build: clean-build ## Build wheel file
 	@echo "🚀 Creating wheel file"

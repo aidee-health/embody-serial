@@ -13,6 +13,8 @@ from embodyserial import helpers
 from embodyserial.exceptions import MissingResponseError
 
 
+@pytest.mark.fast
+@pytest.mark.api
 def test_get_current_time_success() -> None:
     sender = __create_sender_mock(attr=attributes.CurrentTimeAttribute(1666368870000))
     send_helper = helpers.EmbodySendHelper(sender=sender)
@@ -20,6 +22,8 @@ def test_get_current_time_success() -> None:
     assert current_time == datetime.fromisoformat("2022-10-21 16:14:30.000+00:00")
 
 
+@pytest.mark.fast
+@pytest.mark.api
 def test_get_current_time_no_response() -> None:
     sender: helpers.EmbodySender = Mock()
     sender.send = Mock(return_value=None)
@@ -28,6 +32,8 @@ def test_get_current_time_no_response() -> None:
         send_helper.get_current_time()
 
 
+@pytest.mark.fast
+@pytest.mark.api
 def test_get_current_time_with_exception() -> None:
     """Test successful get current time."""
     sender: helpers.EmbodySender = Mock()
@@ -37,6 +43,8 @@ def test_get_current_time_with_exception() -> None:
         send_helper.get_current_time()
 
 
+@pytest.mark.fast
+@pytest.mark.api
 def test_get_serial_no_success() -> None:
     sender = __create_sender_mock(attr=attributes.SerialNoAttribute(12345678))
     send_helper = helpers.EmbodySendHelper(sender=sender)
@@ -44,6 +52,8 @@ def test_get_serial_no_success() -> None:
     assert serial_no == "0000000000BC614E"
 
 
+@pytest.mark.fast
+@pytest.mark.api
 def test_get_battery_level() -> None:
     sender = __create_sender_mock(attr=attributes.BatteryLevelAttribute(3))
     send_helper = helpers.EmbodySendHelper(sender=sender)
@@ -51,6 +61,8 @@ def test_get_battery_level() -> None:
     assert battery_level == 3
 
 
+@pytest.mark.fast
+@pytest.mark.api
 def test_get_vendor() -> None:
     sender = __create_sender_mock(attr=attributes.VendorAttribute("Aidee"))
     send_helper = helpers.EmbodySendHelper(sender=sender)
@@ -58,6 +70,8 @@ def test_get_vendor() -> None:
     assert vendor == "Aidee"
 
 
+@pytest.mark.fast
+@pytest.mark.api
 def test_get_model() -> None:
     sender = __create_sender_mock(attr=attributes.ModelAttribute("Aidee Embody"))
     send_helper = helpers.EmbodySendHelper(sender=sender)
@@ -65,6 +79,8 @@ def test_get_model() -> None:
     assert model == "Aidee Embody"
 
 
+@pytest.mark.fast
+@pytest.mark.api
 def test_get_firmware_version() -> None:
     sender = __create_sender_mock(attr=attributes.FirmwareVersionAttribute(0x010203))
     send_helper = helpers.EmbodySendHelper(sender=sender)
@@ -91,6 +107,8 @@ def __create_set_sender_mock() -> helpers.EmbodySender:
     return sender
 
 
+@pytest.mark.fast
+@pytest.mark.api
 def test_get_on_body_detect_success() -> None:
     sender = __create_sender_mock(attr=attributes.OnBodyDetectAttribute(True))
     send_helper = helpers.EmbodySendHelper(sender=sender)
@@ -98,6 +116,8 @@ def test_get_on_body_detect_success() -> None:
     assert on_body_detect is True
 
 
+@pytest.mark.fast
+@pytest.mark.api
 def test_get_on_body_detect_no_response() -> None:
     sender: helpers.EmbodySender = Mock()
     sender.send = Mock(return_value=None)
@@ -106,6 +126,8 @@ def test_get_on_body_detect_no_response() -> None:
         send_helper.get_on_body_detect()
 
 
+@pytest.mark.fast
+@pytest.mark.api
 def test_get_on_body_detect_with_exception() -> None:
     sender: helpers.EmbodySender = Mock()
     sender.send = Mock(side_effect=SerialException)
@@ -114,6 +136,8 @@ def test_get_on_body_detect_with_exception() -> None:
         send_helper.get_on_body_detect()
 
 
+@pytest.mark.fast
+@pytest.mark.api
 def test_set_on_body_detect_success() -> None:
     sender = __create_set_sender_mock()
     send_helper = helpers.EmbodySendHelper(sender=sender)
@@ -121,6 +145,8 @@ def test_set_on_body_detect_success() -> None:
     assert result is True
 
 
+@pytest.mark.fast
+@pytest.mark.api
 def test_set_on_body_detect_no_response() -> None:
     sender: helpers.EmbodySender = Mock()
     sender.send = Mock(return_value=None)
@@ -130,6 +156,8 @@ def test_set_on_body_detect_no_response() -> None:
     sender.send.assert_called_once()
 
 
+@pytest.mark.fast
+@pytest.mark.api
 def test_set_on_body_detect_with_exception() -> None:
     sender: helpers.EmbodySender = Mock()
     sender.send = Mock(side_effect=SerialException)
