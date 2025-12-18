@@ -28,7 +28,7 @@
 - Provides callback interfaces for incoming messages, response messages and connect/disconnect
 - All methods and callbacks are threadsafe
 - Separate threads for send, receive and callback processing
-- Type safe code using [mypy](https://mypy.readthedocs.io/) for type checking
+- Type safe code using [ty](https://docs.astral.sh/ty/) for type checking
 
 ## Requirements
 
