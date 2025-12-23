@@ -20,6 +20,8 @@ from concurrent.futures import TimeoutError
 from dataclasses import dataclass
 from operator import attrgetter
 from typing import Any
+from collections.abc import Callable
+from typing import TypeVar
 
 import serial
 import serial.tools.list_ports
@@ -37,10 +39,13 @@ from embodyserial.listeners import ResponseMessageListener
 
 logger = logging.getLogger(__name__)
 
+_T = TypeVar("_T")
+
 BAUD_RATE = 115200
 DEFAULT_READ_TIMEOUT = 5
 FILE_READ_CHUNK_SIZE = 1024
 FILE_READ_INTER_BLOCK_TIMEOUT = 5
+MAX_PROTOCOL_MESSAGE_LENGTH = 20480
 WINDOWS_RX_BUFFER = 256 * 1024
 WINDOWS_TX_BUFFER = 12800
 
@@ -83,9 +88,11 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         else:
             self.__serial = serial.Serial(port=self.__port, baudrate=BAUD_RATE, timeout=DEFAULT_READ_TIMEOUT)
             if os.name == "nt" and WINDOWS_RX_BUFFER and WINDOWS_TX_BUFFER:
-                buffer_set = self.__serial.set_buffer_size(rx_size=WINDOWS_RX_BUFFER, tx_size=WINDOWS_TX_BUFFER)
-                if buffer_set and buffer_set is not True:
-                    logger.warning(f"Failed to set buffer size for windows: {buffer_set}")
+                set_buffer_size = getattr(self.__serial, "set_buffer_size", None)
+                if set_buffer_size:
+                    buffer_set = set_buffer_size(rx_size=WINDOWS_RX_BUFFER, tx_size=WINDOWS_TX_BUFFER)
+                    if buffer_set and buffer_set is not True:
+                        logger.warning(f"Failed to set buffer size for windows: {buffer_set}")
         self.__connected = True
         self.__sender = _MessageSender(self.__serial)
         self.__reader = _ReaderThread(serial_instance=self.__serial)
@@ -116,14 +123,18 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             self.__reader.stop()
             self.__sender.shutdown()
             if self.__serial.is_open:
-                try:
-                    self.__serial.reset_input_buffer()
-                except (OSError, SerialException) as e:
-                    logger.debug(f"Failed to reset input buffer: {e}")
-                try:
-                    self.__serial.reset_output_buffer()
-                except (OSError, SerialException) as e:
-                    logger.debug(f"Failed to reset output buffer: {e}")
+                reset_input = getattr(self.__serial, "reset_input_buffer", None)
+                if reset_input:
+                    try:
+                        reset_input()
+                    except (OSError, SerialException) as e:
+                        logger.debug(f"Failed to reset input buffer: {e}")
+                reset_output = getattr(self.__serial, "reset_output_buffer", None)
+                if reset_output:
+                    try:
+                        reset_output()
+                    except (OSError, SerialException) as e:
+                        logger.debug(f"Failed to reset output buffer: {e}")
                 try:
                     self.__serial.close()
                 except (OSError, SerialException) as e:
@@ -154,8 +165,9 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             return tempfile.NamedTemporaryFile(delete=False).name
 
         # lock send to prevent sending other messages while downloading
-        with self.__sender._send_lock:
-            return self.__reader.download_file(file_name, size, download_listener, timeout, delay, ignore_crc_error)
+        return self.__sender.execute_with_send_lock(
+            lambda: self.__reader.download_file(file_name, size, download_listener, timeout, delay, ignore_crc_error)
+        )
 
     def download_file_with_retries(
         self,
@@ -219,13 +231,13 @@ class EmbodySerial(ConnectionListener, EmbodySender):
     @staticmethod
     def __port_is_alive(port: Any) -> bool:
         """Check if port has an active embody device."""
-        logger.info(f"Checking candidate port: {port}")
+        logger.debug(f"Checking candidate port: {port}")
         ser = None
         try:
-            ser = serial.Serial(port=port.device, baudrate=115200, timeout=1)
+            ser = serial.Serial(port=port.device, baudrate=BAUD_RATE, timeout=1)
             in_waiting = ser.in_waiting
             if in_waiting and in_waiting > 0:
-                logger.info(f"Flushing input buffer ({in_waiting} bytes)")
+                logger.debug(f"Flushing input buffer ({in_waiting} bytes)")
                 ser.read(in_waiting)
             ser.reset_input_buffer()
             ser.reset_output_buffer()
@@ -235,7 +247,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             logger.debug(f"Response: {response.hex()} (expected: {expected_response.hex()})")
             return response == expected_response
         except (SerialException, OSError) as e:
-            logger.info(f"Exception raised for port check: {e}")
+            logger.debug(f"Exception raised for port check: {e}")
             return False
         finally:
             if ser and ser.is_open:
@@ -260,6 +272,11 @@ class _MessageSender(ResponseMessageListener):
 
     def shutdown(self) -> None:
         self.__send_executor.shutdown(wait=True, cancel_futures=False)
+
+    def execute_with_send_lock(self, func: Callable[[], _T]) -> _T:
+        """Execute function while holding the send lock."""
+        with self._send_lock:
+            return func()
 
     def response_message_received(self, msg: codec.Message) -> None:
         """Invoked when response message is received by Message reader.
@@ -379,8 +396,6 @@ class _ReaderThread(threading.Thread):
             if not self.__f.file_name:
                 raise embodyexceptions.MissingResponseError("No file received")
             return self.__f.file_name
-        except Exception as e:
-            raise e
         finally:
             self.__reset_file_mode()
 
@@ -436,10 +451,47 @@ class _ReaderThread(threading.Thread):
         self.__reset_file_mode()
         self.__notify_connection_listeners(connected=False)
 
+    def __finalize_file_download(
+        self, file_data: bytes, raw_crc_received: bytes, f: _FileDownload, start: float
+    ) -> None:
+        """Validate CRC, write temp file, and notify completion."""
+        end = time.time()
+        elapsed = end - start
+        kbps = round((f.file_size / 1024) / elapsed, 2) if elapsed > 0 else 0
+
+        if not raw_crc_received or len(raw_crc_received) < 2:
+            raise embodyexceptions.CrcError("Missing/too short crc")
+
+        self.__async_notify_file_download_in_progress(f, f.file_size, 100, kbps)
+        logger.debug(f"Read {round(f.file_size / 1024, 2)}KB in {elapsed} secs - {kbps}KB/s")
+
+        (crc_received,) = struct.unpack(">H", raw_crc_received)
+        calculated_crc = crc.crc16(data=file_data)
+        if crc_received != calculated_crc:
+            if not f.ignore_crc_error:
+                raise embodyexceptions.CrcError(
+                    f"Invalid crc - calculated {hex(calculated_crc)}, but received {hex(crc_received)}"
+                )
+            logger.warning(f"IGNORING invalid crc - calculated {hex(calculated_crc)}, but received {hex(crc_received)}")
+
+        tmp = tempfile.NamedTemporaryFile(delete=False)
+        tmp.write(file_data)
+        tmp.flush()
+        tmp.close()
+        f.file_name = tmp.name
+        self.__async_notify_file_download_completed(f, kbps)
+
     def __read_file(self, first_bytes: bytes, f: _FileDownload) -> None:
         remaining_size = f.file_size - len(first_bytes)
+
+        # Handle very small files where all data fits in first_bytes
+        if remaining_size <= 0:
+            self.__handle_small_file(first_bytes, f)
+            return
+
         start = time.time()
         last = start
+        last_data_received = start
         in_memory_buffer = bytearray()
         in_memory_buffer.extend(first_bytes)
         loop_count = 0
@@ -452,7 +504,7 @@ class _ReaderThread(threading.Thread):
                     curr_len = len(chunk)
                     in_memory_buffer.extend(chunk)
                     remaining_size -= curr_len
-                    # logger.warning(f"Loop {str(loop_count)} time {str(now-start)} chunk {str(curr_len)}", exc_info=False)
+                    last_data_received = now
                     if now > (last + 0.5):  # Update every 500ms
                         self.__async_notify_file_download_in_progress(
                             f,
@@ -470,42 +522,35 @@ class _ReaderThread(threading.Thread):
                     )
                 if f.file_delay > 0:
                     time.sleep(f.file_delay)
-                elif time.time() - last > FILE_READ_INTER_BLOCK_TIMEOUT:
+                elif time.time() - last_data_received > FILE_READ_INTER_BLOCK_TIMEOUT:
                     raise embodyexceptions.TimeoutError(
                         f"Inter-block timeout!. Read {f.file_size - remaining_size} "
                         f"bytes out of {f.file_size}. Remaining {remaining_size + 2} bytes"
                     )
             raw_crc_received = self.__serial.read(2)
-            end = time.time()
-            if not raw_crc_received or len(raw_crc_received) < 2:
-                f.file_error = embodyexceptions.CrcError("Missing/too short crc")
-            self.__async_notify_file_download_in_progress(
-                f,
-                f.file_size,
-                100,
-                round((f.file_size / 1024) / (end - start), 2),
-            )
-            logger.debug(
-                f"Read {round(f.file_size / 1024, 2)}KB in {end - start} secs "
-                f"- {round((f.file_size / 1024) / (end - start), 2)}KB/s"
-            )
-            (crc_received,) = struct.unpack(">H", raw_crc_received)
-            calculated_crc = crc.crc16(data=in_memory_buffer)
-            if not crc_received == calculated_crc:
-                if not f.ignore_crc_error:
-                    raise embodyexceptions.CrcError(
-                        f"Invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}"
-                    )
-                else:
-                    logger.warning(
-                        f"IGNORING invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}"
-                    )
-            tmp = tempfile.NamedTemporaryFile(delete=False)
-            tmp.write(in_memory_buffer)
-            tmp.flush()
-            tmp.close()
-            f.file_name = tmp.name
-            self.__async_notify_file_download_completed(f, round((f.file_size / 1024) / (end - start), 2))
+            self.__finalize_file_download(bytes(in_memory_buffer), raw_crc_received, f, start)
+        except embodyexceptions.CrcError as e:
+            if not f.ignore_crc_error:
+                f.file_error = e
+        except Exception as e:
+            f.file_error = e
+        finally:
+            if f.file_error:
+                self.__async_notify_file_download_failed(f, f.file_error)
+            self.__file_event.set()
+
+    def __handle_small_file(self, first_bytes: bytes, f: _FileDownload) -> None:
+        """Handle files where file_size <= len(first_bytes)."""
+        start = time.time()
+        try:
+            file_data = first_bytes[: f.file_size]
+            crc_in_first = first_bytes[f.file_size : f.file_size + 2]
+            crc_remaining = 2 - len(crc_in_first)
+            if crc_remaining > 0:
+                raw_crc_received = crc_in_first + self.__serial.read(crc_remaining)
+            else:
+                raw_crc_received = crc_in_first[:2]
+            self.__finalize_file_download(file_data, raw_crc_received, f, start)
         except embodyexceptions.CrcError as e:
             if not f.ignore_crc_error:
                 f.file_error = e
@@ -551,7 +596,7 @@ class _ReaderThread(threading.Thread):
         logger.debug(f"RECEIVE: Received header {raw_header.hex()}")
         msg_type, length = struct.unpack(">BH", raw_header)
         logger.debug(f"RECEIVE: Received msg type: {msg_type}, length: {length}")
-        if length > 20480:
+        if length > MAX_PROTOCOL_MESSAGE_LENGTH:
             raise ValueError(f"Message length too long: {length}")
         remaining_length = length - 3
         raw_message = raw_header
