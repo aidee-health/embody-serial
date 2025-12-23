@@ -39,7 +39,7 @@ from embodyserial.listeners import ResponseMessageListener
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar("T")
+_T = TypeVar("_T")
 
 BAUD_RATE = 115200
 DEFAULT_READ_TIMEOUT = 5
@@ -273,7 +273,7 @@ class _MessageSender(ResponseMessageListener):
     def shutdown(self) -> None:
         self.__send_executor.shutdown(wait=True, cancel_futures=False)
 
-    def execute_with_send_lock(self, func: Callable[[], T]) -> T:
+    def execute_with_send_lock(self, func: Callable[[], _T]) -> _T:
         """Execute function while holding the send lock."""
         with self._send_lock:
             return func()

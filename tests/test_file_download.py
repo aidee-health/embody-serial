@@ -134,3 +134,26 @@ class TestSmallFileDownload:
             downloaded_content = f.read()
         assert downloaded_content == file_content
         communicator.shutdown()
+
+    def test_small_file_crc_validation_failure(self):
+        """Verify CRC error is raised when CRC doesn't match for small file."""
+        file_content = b"\x42"
+        # Create data with intentionally wrong CRC
+        wrong_crc = struct.pack(">H", 0xFFFF)
+        full_data = file_content + wrong_crc
+
+        serial = DummySerial()
+        communicator = serialcomm.EmbodySerial(serial_port="Dummy", serial_instance=serial)
+
+        def set_data_after_delay():
+            time.sleep(0.1)
+            serial.set_read_data(full_data)
+
+        threading.Thread(target=set_data_after_delay, daemon=True).start()
+
+        from embodyserial.exceptions import CrcError
+
+        with pytest.raises(CrcError):
+            communicator.download_file(file_name="bad_crc.bin", size=1, timeout=5)
+
+        communicator.shutdown()
