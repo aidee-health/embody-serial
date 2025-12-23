@@ -20,6 +20,8 @@ from concurrent.futures import TimeoutError
 from dataclasses import dataclass
 from operator import attrgetter
 from typing import Any
+from collections.abc import Callable
+from typing import TypeVar
 
 import serial
 import serial.tools.list_ports
@@ -37,10 +39,13 @@ from embodyserial.listeners import ResponseMessageListener
 
 logger = logging.getLogger(__name__)
 
+T = TypeVar("T")
+
 BAUD_RATE = 115200
 DEFAULT_READ_TIMEOUT = 5
 FILE_READ_CHUNK_SIZE = 1024
 FILE_READ_INTER_BLOCK_TIMEOUT = 5
+MAX_PROTOCOL_MESSAGE_LENGTH = 20480
 WINDOWS_RX_BUFFER = 256 * 1024
 WINDOWS_TX_BUFFER = 12800
 
@@ -160,8 +165,9 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             return tempfile.NamedTemporaryFile(delete=False).name
 
         # lock send to prevent sending other messages while downloading
-        with self.__sender._send_lock:
-            return self.__reader.download_file(file_name, size, download_listener, timeout, delay, ignore_crc_error)
+        return self.__sender.execute_with_send_lock(
+            lambda: self.__reader.download_file(file_name, size, download_listener, timeout, delay, ignore_crc_error)
+        )
 
     def download_file_with_retries(
         self,
@@ -225,13 +231,13 @@ class EmbodySerial(ConnectionListener, EmbodySender):
     @staticmethod
     def __port_is_alive(port: Any) -> bool:
         """Check if port has an active embody device."""
-        logger.info(f"Checking candidate port: {port}")
+        logger.debug(f"Checking candidate port: {port}")
         ser = None
         try:
-            ser = serial.Serial(port=port.device, baudrate=115200, timeout=1)
+            ser = serial.Serial(port=port.device, baudrate=BAUD_RATE, timeout=1)
             in_waiting = ser.in_waiting
             if in_waiting and in_waiting > 0:
-                logger.info(f"Flushing input buffer ({in_waiting} bytes)")
+                logger.debug(f"Flushing input buffer ({in_waiting} bytes)")
                 ser.read(in_waiting)
             ser.reset_input_buffer()
             ser.reset_output_buffer()
@@ -241,7 +247,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
             logger.debug(f"Response: {response.hex()} (expected: {expected_response.hex()})")
             return response == expected_response
         except (SerialException, OSError) as e:
-            logger.info(f"Exception raised for port check: {e}")
+            logger.debug(f"Exception raised for port check: {e}")
             return False
         finally:
             if ser and ser.is_open:
@@ -266,6 +272,11 @@ class _MessageSender(ResponseMessageListener):
 
     def shutdown(self) -> None:
         self.__send_executor.shutdown(wait=True, cancel_futures=False)
+
+    def execute_with_send_lock(self, func: Callable[[], T]) -> T:
+        """Execute function while holding the send lock."""
+        with self._send_lock:
+            return func()
 
     def response_message_received(self, msg: codec.Message) -> None:
         """Invoked when response message is received by Message reader.
@@ -385,8 +396,6 @@ class _ReaderThread(threading.Thread):
             if not self.__f.file_name:
                 raise embodyexceptions.MissingResponseError("No file received")
             return self.__f.file_name
-        except Exception as e:
-            raise e
         finally:
             self.__reset_file_mode()
 
@@ -461,11 +470,9 @@ class _ReaderThread(threading.Thread):
         if crc_received != calculated_crc:
             if not f.ignore_crc_error:
                 raise embodyexceptions.CrcError(
-                    f"Invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}"
+                    f"Invalid crc - calculated {hex(calculated_crc)}, but received {hex(crc_received)}"
                 )
-            logger.warning(
-                f"IGNORING invalid crc - expected {hex(crc_received)}, received/calculated {hex(calculated_crc)}"
-            )
+            logger.warning(f"IGNORING invalid crc - calculated {hex(calculated_crc)}, but received {hex(crc_received)}")
 
         tmp = tempfile.NamedTemporaryFile(delete=False)
         tmp.write(file_data)
@@ -589,7 +596,7 @@ class _ReaderThread(threading.Thread):
         logger.debug(f"RECEIVE: Received header {raw_header.hex()}")
         msg_type, length = struct.unpack(">BH", raw_header)
         logger.debug(f"RECEIVE: Received msg type: {msg_type}, length: {length}")
-        if length > 20480:
+        if length > MAX_PROTOCOL_MESSAGE_LENGTH:
             raise ValueError(f"Message length too long: {length}")
         remaining_length = length - 3
         raw_message = raw_header

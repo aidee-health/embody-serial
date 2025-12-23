@@ -5,6 +5,7 @@ import struct
 import time
 from datetime import datetime
 from datetime import UTC
+from typing import TypeVar
 
 from embodycodec import attributes
 from embodycodec import codec
@@ -17,6 +18,8 @@ from embodyserial.exceptions import NackError
 
 logger = logging.getLogger(__name__)
 
+_T = TypeVar("_T", bound=codec.Message)
+
 
 class EmbodySendHelper:
     """Facade to make send/receive more protocol agnostic with simple get/set methods."""
@@ -24,6 +27,16 @@ class EmbodySendHelper:
     def __init__(self, sender: EmbodySender, timeout: int | None = 30) -> None:
         self.__sender = sender
         self.__send_timeout = timeout
+
+    def __validate_response(self, response: codec.Message | None, expected_type: type[_T]) -> _T:
+        """Validate response and return typed result."""
+        if not response:
+            raise MissingResponseError()
+        if isinstance(response, codec.NackResponse):
+            raise NackError(response)
+        if not isinstance(response, expected_type):
+            raise TypeError(f"Expected {expected_type.__name__}, got {type(response).__name__}")
+        return response
 
     def get_current_time(self) -> datetime:
         response_attribute = self.__do_send_get_attribute_request(attributes.CurrentTimeAttribute.attribute_id)
@@ -95,30 +108,17 @@ class EmbodySendHelper:
 
     def get_files(self) -> list[tuple[str, int]]:
         """Get a list of tuples with file name and file size."""
-        response = self.__sender.send(msg=codec.ListFiles(), timeout=120)
-        if not response:
-            raise MissingResponseError
-        if isinstance(response, codec.NackResponse):
-            raise NackError(response)
-        if not isinstance(response, codec.ListFilesResponse):
-            raise TypeError(f"Expected ListFilesResponse, got {type(response).__name__}")
-
-        files: list[tuple[str, int]] = []
-        if len(response.files) == 0:
-            return files
-        else:
-            for file in response.files:
-                files.append((str(file.file_name), file.file_size))
-            return files
+        response = self.__validate_response(
+            self.__sender.send(msg=codec.ListFiles(), timeout=120),
+            codec.ListFilesResponse,
+        )
+        return [(str(f.file_name), f.file_size) for f in response.files]
 
     def delete_file(self, file_name: str) -> bool:
-        response = self.__sender.send(msg=codec.DeleteFile(types.File(file_name)), timeout=self.__send_timeout)
-        if not response:
-            raise MissingResponseError()
-        if isinstance(response, codec.NackResponse):
-            raise NackError(response)
-        if not isinstance(response, codec.DeleteFileResponse):
-            raise TypeError(f"Expected DeleteFileResponse, got {type(response).__name__}")
+        self.__validate_response(
+            self.__sender.send(msg=codec.DeleteFile(types.File(file_name)), timeout=self.__send_timeout),
+            codec.DeleteFileResponse,
+        )
         return True
 
     def delete_file_with_retries(self, file_name: str, retries=3, timeout_seconds_per_retry=0.5) -> bool:
@@ -148,13 +148,10 @@ class EmbodySendHelper:
         return self.__do_send_set_attribute_request(attr)
 
     def reformat_disk(self) -> bool:
-        response = self.__sender.send(msg=codec.ReformatDisk(), timeout=self.__send_timeout)
-        if not response:
-            raise MissingResponseError()
-        if isinstance(response, codec.NackResponse):
-            raise NackError(response)
-        if not isinstance(response, codec.ReformatDiskResponse):
-            raise TypeError(f"Expected ReformatDiskResponse, got {type(response).__name__}")
+        self.__validate_response(
+            self.__sender.send(msg=codec.ReformatDisk(), timeout=self.__send_timeout),
+            codec.ReformatDiskResponse,
+        )
         return True
 
     def reset_device(self) -> bool:
@@ -175,13 +172,10 @@ class EmbodySendHelper:
         return True
 
     def delete_all_files(self) -> bool:
-        response = self.__sender.send(msg=codec.DeleteAllFiles(), timeout=self.__send_timeout)
-        if not response:
-            raise MissingResponseError()
-        if isinstance(response, codec.NackResponse):
-            raise NackError(response)
-        if not isinstance(response, codec.DeleteAllFilesResponse):
-            raise TypeError(f"Expected DeleteAllFilesResponse, got {type(response).__name__}")
+        self.__validate_response(
+            self.__sender.send(msg=codec.DeleteAllFiles(), timeout=self.__send_timeout),
+            codec.DeleteAllFilesResponse,
+        )
         return True
 
     def set_on_body_detect(self, enable: bool) -> bool:
@@ -193,22 +187,17 @@ class EmbodySendHelper:
         return response_attribute.value
 
     def __do_send_get_attribute_request(self, attribute_id: int) -> attributes.Attribute:
-        response = self.__sender.send(msg=codec.GetAttribute(attribute_id), timeout=self.__send_timeout)
-        if not response:
-            raise MissingResponseError()
-        if isinstance(response, codec.NackResponse):
-            raise NackError(response)
-        if not isinstance(response, codec.GetAttributeResponse):
-            raise TypeError(f"Expected GetAttributeResponse, got {type(response).__name__}")
+        response = self.__validate_response(
+            self.__sender.send(msg=codec.GetAttribute(attribute_id), timeout=self.__send_timeout),
+            codec.GetAttributeResponse,
+        )
         return response.value
 
     def __do_send_set_attribute_request(self, attr: attributes.Attribute) -> bool:
-        response = self.__sender.send(
-            msg=codec.SetAttribute(attribute_id=attr.attribute_id, value=attr),
-            timeout=self.__send_timeout,
+        self.__validate_response(
+            self.__sender.send(
+                msg=codec.SetAttribute(attribute_id=attr.attribute_id, value=attr), timeout=self.__send_timeout
+            ),
+            codec.SetAttributeResponse,
         )
-        if not response:
-            raise MissingResponseError()
-        if isinstance(response, codec.NackResponse):
-            raise NackError(response)
-        return isinstance(response, codec.SetAttributeResponse)
+        return True
