@@ -31,11 +31,11 @@ wheels = [
 
 [[package]]
 name = "embody-codec"
-version = "1.0.38"
+version = "1.0.39"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/60/d2/297800026944480cf95e06fcde001197f05e14eb4a6cdbd0d0ec8260d591/embody_codec-1.0.38.tar.gz", hash = "sha256:87338a87b41650dffa8030cb2f123d006f023576cf8f4042a37dad9e0cd529f2", size = 18393, upload-time = "2025-12-18T08:32:48.38Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/33/a9/ba7ed6811628bd423e8341d1d52470badb41596184df18f72d1f5c5e619c/embody_codec-1.0.39.tar.gz", hash = "sha256:c9990f7c84b44adc35fde549ad49e0c0069d10eb6cec682db3ad5d4752a4a557", size = 18503, upload-time = "2025-12-20T11:13:33.743Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1f/ff/2044927fd45bf131256128fd3c9edef567b6726d83888beb7bdd8ed8ffdf/embody_codec-1.0.38-py3-none-any.whl", hash = "sha256:93eb06ecedee0cab365f6a96222941887fc4c71b33714e99176e66305901335b", size = 20150, upload-time = "2025-12-18T08:32:47.561Z" },
+    { url = "https://files.pythonhosted.org/packages/ae/4f/aa70a5a1274a84a57d86edc04c4c213a1ca43f2d13a6fda832daec5dcec1/embody_codec-1.0.39-py3-none-any.whl", hash = "sha256:413d00e8a8aaf2636066259ac0debf45c04a54436d5f26bebbacf0f480411f28", size = 20266, upload-time = "2025-12-20T11:13:32.544Z" },
 ]
 
 [[package]]
