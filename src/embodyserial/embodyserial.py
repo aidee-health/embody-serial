@@ -164,7 +164,9 @@ class EmbodySerial(ConnectionListener, EmbodySender):
           CrcError if invalid crc.
         """
         if size == 0:
-            return tempfile.NamedTemporaryFile(delete=False).name
+            fd, path = tempfile.mkstemp()
+            os.close(fd)
+            return path
 
         # lock send to prevent sending other messages while downloading
         return self.__sender.execute_with_send_lock(

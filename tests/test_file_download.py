@@ -22,6 +22,18 @@ def _create_file_data_with_crc(file_content: bytes) -> bytes:
 class TestSmallFileDownload:
     """Test small file download edge cases."""
 
+    def test_0_byte_file_download(self):
+        """Verify 0-byte file returns a path to a valid empty file."""
+        serial = DummySerial()
+        communicator = serialcomm.EmbodySerial(serial_port="Dummy", serial_instance=serial)
+
+        result = communicator.download_file(file_name="empty.bin", size=0, timeout=5)
+
+        assert result is not None
+        with open(result, "rb") as f:
+            assert f.read() == b""
+        communicator.shutdown()
+
     def test_1_byte_file_download(self):
         """Verify 1-byte file downloads correctly (Bug #2 fix)."""
         # For 1-byte file: first_bytes will contain [file_byte, crc_byte_1, crc_byte_2]
