@@ -5,7 +5,7 @@ description = "Communicate with the embody device over a serial port"
 authors = [{name = "Aidee Health AS", email = "hello@aidee.io"}]
 license = "MIT"
 readme = "README.md"
-requires-python = ">=3.11,<4.0"
+requires-python = ">=3.12,<4.0"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
 ]
@@ -19,8 +19,8 @@ dependencies= [
 dev = [
     "pytest>=7.2.0",
     "Pygments>=2.10.0",
-    "ruff>=0.11.5",
-    "ty>=0.0.2",
+    "ruff>=0.15.0",
+    "ty>=0.0.42",
     "pre-commit>=2.16.0",
     "pre-commit-hooks>=4.1.0",
 ]
@@ -54,25 +54,8 @@ markers = [
     "error_handling: Tests focused on exception handling and validation",
 ]
 
-[tool.coverage.paths]
-source = ["src", "*/site-packages"]
-tests = ["tests", "*/tests"]
-
-[tool.coverage.run]
-branch = true
-source = ["embodyserial", "tests"]
-
-[tool.coverage.report]
-show_missing = true
-fail_under = 2
-
-[tool.isort]
-profile = "black"
-force_single_line = true
-lines_after_imports = 2
-
 [tool.ty.environment]
-python-version = "3.11"  # Matches project requires-python
+python-version = "3.12"  # Matches project requires-python
 
 [tool.ty.rules]
 # Core type safety rules
@@ -118,10 +101,10 @@ ambiguous-protocol-member = "warn"
 
 [tool.ty.terminal]
 output-format = "full"             # Provides detailed error messages with full context
-error-on-warning = false           # Don't fail on warnings initially
+error-on-warning = true            # Treat warning-level rules as failures (config is clean)
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py312"
 line-length = 120
 
 [tool.ruff.lint]
@@ -139,6 +122,11 @@ select = [
     "RUF",  # Ruff-specific rules
     "PTH",  # use pathlib
     "PL",   # Pylint
+    "SIM",  # flake8-simplify
+    "PT",   # flake8-pytest-style
+    "RET",  # flake8-return
+    "G",    # flake8-logging-format
+    "LOG",  # flake8-logging
 ]
 ignore = [
     "E203",   # Whitespace before ':'
@@ -153,12 +141,15 @@ ignore = [
     "B905",   # zip() without an explicit strict= parameter
     "PLR2004", # Magic value used in comparison
     "PLR0913", # Too many arguments
-    "I001",   # isort: skip
     "PTH123", # pathlib: skip
     "RUF012", # mutable-class-default
     "PLR0912", # Too many branches
     "PLR0915", # Too many statements
 ]
+
+[tool.ruff.lint.isort]
+force-single-line = true
+lines-after-imports = 2
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

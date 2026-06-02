@@ -32,7 +32,7 @@
 
 ## Requirements
 
-- Python 3.11 or newer
+- Python 3.12 or newer
 - Access to private Aidee Health repositories on Github
 
 ## Installation

@@ -17,6 +17,7 @@ from embodyserial.helpers import EmbodySendHelper
 from embodyserial.listeners import FileDownloadListener
 from embodyserial.logging import configure_library_logging
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -244,7 +245,7 @@ def __do_download_file(
 
         def on_file_download_failed(self, original_file_name: str, error: Exception) -> None:
             """Process file download failure."""
-            logger.error(f"Download failed for {original_file_name}: {error}")
+            logger.error("Download failed for %s: %s", original_file_name, error)
 
     listener = _DownloadListener()
     if retries == 0:

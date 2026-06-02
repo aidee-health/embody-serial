@@ -1,6 +1,7 @@
 """Test resource management and cleanup."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 import pytest
 from serial.serialutil import SerialException
@@ -58,11 +59,13 @@ class TestShutdownResilience:
         communicator = serialcomm.EmbodySerial(serial_port="Dummy", serial_instance=serial)
 
         # Mock serial to raise on buffer operations
-        with patch.object(serial, "reset_input_buffer", side_effect=OSError("Error")):
-            with patch.object(serial, "reset_output_buffer", side_effect=OSError("Error")):
-                with patch.object(serial, "close", side_effect=SerialException("Error")):
-                    # Should not raise
-                    communicator.shutdown()
+        with (
+            patch.object(serial, "reset_input_buffer", side_effect=OSError("Error")),
+            patch.object(serial, "reset_output_buffer", side_effect=OSError("Error")),
+            patch.object(serial, "close", side_effect=SerialException("Error")),
+        ):
+            # Should not raise
+            communicator.shutdown()
 
     def test_double_shutdown_is_safe(self):
         """Verify calling shutdown twice doesn't cause issues."""

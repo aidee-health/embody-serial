@@ -1,5 +1,6 @@
 """Test concurrent callback processing with max_workers=3."""
 
+import tempfile
 import threading
 import time
 from unittest.mock import patch
@@ -8,7 +9,8 @@ import pytest
 from embodycodec import codec
 
 from embodyserial import embodyserial as serialcomm
-from embodyserial.listeners import MessageListener, ResponseMessageListener
+from embodyserial.listeners import MessageListener
+from embodyserial.listeners import ResponseMessageListener
 from tests.conftest import DummySerial
 
 
@@ -144,8 +146,6 @@ class TestConcurrentCallbacks:
                 communicator._EmbodySerial__reader,  # ty: ignore[unresolved-attribute]
                 "download_file",
             ) as mock_download:
-                import tempfile
-
                 with tempfile.NamedTemporaryFile(suffix=".bin", delete=False) as tmp:
                     mock_download.return_value = tmp.name
                 time.sleep(0.1)  # Simulate download time

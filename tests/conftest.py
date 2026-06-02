@@ -29,9 +29,7 @@ class DummySerial(SerialBase):
         if not self.__response_data or self.__response_data_pos + size > len(self.__response_data):
             self.__response_data_available.clear()
             self.__response_data_available.wait()
-        part = self.__response_data[
-            self.__response_data_pos : self.__response_data_pos + size
-        ]  # ty: ignore[not-subscriptable]
+        part = self.__response_data[self.__response_data_pos : self.__response_data_pos + size]  # ty: ignore[not-subscriptable]
         self.__response_data_pos += size
         return part
 

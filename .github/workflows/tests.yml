@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12"] # 3.13 is disabled until numpy is updated to 2.1+
+        python-version: ["3.12", "3.13"]
       fail-fast: false
     defaults:
       run:

@@ -8,6 +8,7 @@ import pytest
 from embodycodec import crc
 
 from embodyserial import embodyserial as serialcomm
+from embodyserial.exceptions import CrcError
 from tests.conftest import DummySerial
 
 
@@ -150,8 +151,6 @@ class TestSmallFileDownload:
             serial.set_read_data(full_data)
 
         threading.Thread(target=set_data_after_delay, daemon=True).start()
-
-        from embodyserial.exceptions import CrcError
 
         with pytest.raises(CrcError):
             communicator.download_file(file_name="bad_crc.bin", size=1, timeout=5)
