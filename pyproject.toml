@@ -86,7 +86,7 @@ invalid-return-type = "error"
 missing-argument = "error"
 too-many-positional-arguments = "error"
 unknown-argument = "error"
-non-subscriptable = "error"
+not-subscriptable = "error"
 not-iterable = "error"
 
 # Exception handling (Tier 1)

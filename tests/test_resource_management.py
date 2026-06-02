@@ -25,7 +25,7 @@ class TestPortManagement:
             mock_port = MagicMock()
             mock_port.device = "/dev/ttyUSB0"
 
-            result = serialcomm.EmbodySerial._EmbodySerial__port_is_alive(mock_port)  # type: ignore[attr-defined]
+            result = serialcomm.EmbodySerial._EmbodySerial__port_is_alive(mock_port)  # ty: ignore[unresolved-attribute]
 
             assert result is False
             mock_instance.close.assert_called_once()
@@ -42,7 +42,7 @@ class TestPortManagement:
             mock_port = MagicMock()
             mock_port.device = "/dev/ttyUSB0"
 
-            result = serialcomm.EmbodySerial._EmbodySerial__port_is_alive(mock_port)  # type: ignore[attr-defined]
+            result = serialcomm.EmbodySerial._EmbodySerial__port_is_alive(mock_port)  # ty: ignore[unresolved-attribute]
 
             assert result is True
             mock_instance.close.assert_called_once()
@@ -94,7 +94,7 @@ class TestThreadExecutorManagement:
         serial = DummySerial()
         communicator = serialcomm.EmbodySerial(serial_port="Dummy", serial_instance=serial)
 
-        reader = communicator._EmbodySerial__reader  # type: ignore[attr-defined]
+        reader = communicator._EmbodySerial__reader  # ty: ignore[unresolved-attribute]
 
         # Should have three separate executors
         assert hasattr(reader, "_ReaderThread__message_listener_executor")
@@ -118,7 +118,7 @@ class TestThreadExecutorManagement:
         serial = DummySerial()
         communicator = serialcomm.EmbodySerial(serial_port="Dummy", serial_instance=serial)
 
-        reader = communicator._EmbodySerial__reader  # type: ignore[attr-defined]
+        reader = communicator._EmbodySerial__reader  # ty: ignore[unresolved-attribute]
         msg_executor = reader._ReaderThread__message_listener_executor
         rsp_executor = reader._ReaderThread__response_message_listener_executor
         file_executor = reader._ReaderThread__file_download_listener_executor

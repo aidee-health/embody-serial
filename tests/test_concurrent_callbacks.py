@@ -43,7 +43,7 @@ class TestConcurrentCallbacks:
             communicator.add_message_listener(listener)
 
         # Send one message - all three listeners will be called
-        reader = communicator._EmbodySerial__reader  # type: ignore[attr-defined]
+        reader = communicator._EmbodySerial__reader  # ty: ignore[unresolved-attribute]
         reader._ReaderThread__handle_message(codec.Heartbeat())
 
         # Wait for all callbacks to complete
@@ -85,7 +85,7 @@ class TestConcurrentCallbacks:
         communicator.add_message_listener(SendingListener())
 
         # Trigger callback that will attempt to send
-        reader = communicator._EmbodySerial__reader  # type: ignore[attr-defined]
+        reader = communicator._EmbodySerial__reader  # ty: ignore[unresolved-attribute]
         reader._ReaderThread__handle_message(codec.Heartbeat())
 
         # Should complete without deadlock
@@ -112,7 +112,7 @@ class TestConcurrentCallbacks:
                 response_received.set()
 
         communicator.add_message_listener(TestMessageListener())
-        reader = communicator._EmbodySerial__reader  # type: ignore[attr-defined]
+        reader = communicator._EmbodySerial__reader  # ty: ignore[unresolved-attribute]
         reader.add_response_message_listener(TestResponseListener())
 
         # Send both types of messages
@@ -140,7 +140,10 @@ class TestConcurrentCallbacks:
 
         # Start a file download in background
         def download_file():
-            with patch.object(communicator._EmbodySerial__reader, "download_file") as mock_download:  # type: ignore[attr-defined]
+            with patch.object(
+                communicator._EmbodySerial__reader,  # ty: ignore[unresolved-attribute]
+                "download_file",
+            ) as mock_download:
                 import tempfile
 
                 with tempfile.NamedTemporaryFile(suffix=".bin", delete=False) as tmp:
@@ -155,7 +158,7 @@ class TestConcurrentCallbacks:
         time.sleep(0.05)
 
         # Trigger callback - should still execute despite download
-        reader = communicator._EmbodySerial__reader  # type: ignore[attr-defined]
+        reader = communicator._EmbodySerial__reader  # ty: ignore[unresolved-attribute]
         reader._ReaderThread__handle_message(codec.Heartbeat())
 
         # Callback should complete
@@ -189,7 +192,7 @@ class TestConcurrentCallbacks:
         communicator.add_message_listener(BlockingMessageListener())
 
         # Add response listener
-        reader = communicator._EmbodySerial__reader  # type: ignore[attr-defined]
+        reader = communicator._EmbodySerial__reader  # ty: ignore[unresolved-attribute]
         reader.add_response_message_listener(FastResponseListener())
 
         # Trigger blocking message callback

@@ -411,7 +411,7 @@ class _ReaderThread(threading.Thread):
         self.alive = False
         if hasattr(self.__serial, "cancel_read"):
             if self.__serial.is_open:
-                self.__serial.cancel_read()  # type: ignore[misc]
+                self.__serial.cancel_read()  # ty: ignore[call-non-callable]
         self.__message_listener_executor.shutdown(wait=True, cancel_futures=False)
         self.__response_message_listener_executor.shutdown(wait=True, cancel_futures=False)
         self.__file_download_listener_executor.shutdown(wait=True, cancel_futures=False)

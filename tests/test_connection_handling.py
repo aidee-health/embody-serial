@@ -16,8 +16,8 @@ class TestConnectionHandling:
         communicator = serialcomm.EmbodySerial(serial_port="Dummy", serial_instance=serial)
 
         # Simulate immediate disconnection
-        with communicator._EmbodySerial__shutdown_lock:  # type: ignore[attr-defined]
-            communicator._EmbodySerial__connected = False  # type: ignore[attr-defined]
+        with communicator._EmbodySerial__shutdown_lock:  # ty: ignore[unresolved-attribute]
+            communicator._EmbodySerial__connected = False  # ty: ignore[unresolved-attribute]
 
         result = communicator.download_file_with_retries(file_name="test.bin", file_size=1024, retries=3)
 
