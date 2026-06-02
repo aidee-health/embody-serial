@@ -3,8 +3,8 @@
 import logging
 import struct
 import time
-from datetime import datetime
 from datetime import UTC
+from datetime import datetime
 from typing import TypeVar
 
 from embodycodec import attributes
@@ -15,6 +15,7 @@ from serial.serialutil import SerialException
 from embodyserial.embodyserial import EmbodySender
 from embodyserial.exceptions import MissingResponseError
 from embodyserial.exceptions import NackError
+
 
 logger = logging.getLogger(__name__)
 
@@ -125,13 +126,13 @@ class EmbodySendHelper:
         for retry in range(1, retries + 1):
             try:
                 if self.delete_file(file_name):
-                    logger.info(f"Deleted file on device: {file_name}")
+                    logger.info("Deleted file on device: %s", file_name)
                     return True
-                logger.warning(f"Delete failed for {file_name} (attempt: {retry})")
+                logger.warning("Delete failed for %s (attempt: %s)", file_name, retry)
                 time.sleep(timeout_seconds_per_retry)
                 continue
             except (MissingResponseError, NackError, SerialException) as e:
-                logger.warning(f"Delete failed for {file_name} (attempt: {retry}): {e}")
+                logger.warning("Delete failed for %s (attempt: %s): %s", file_name, retry, e)
                 time.sleep(timeout_seconds_per_retry)
                 continue
         return False

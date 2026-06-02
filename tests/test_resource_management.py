@@ -1,6 +1,7 @@
 """Test resource management and cleanup."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 import pytest
 from serial.serialutil import SerialException
@@ -25,7 +26,7 @@ class TestPortManagement:
             mock_port = MagicMock()
             mock_port.device = "/dev/ttyUSB0"
 
-            result = serialcomm.EmbodySerial._EmbodySerial__port_is_alive(mock_port)  # type: ignore[attr-defined]
+            result = serialcomm.EmbodySerial._EmbodySerial__port_is_alive(mock_port)  # ty: ignore[unresolved-attribute]
 
             assert result is False
             mock_instance.close.assert_called_once()
@@ -42,7 +43,7 @@ class TestPortManagement:
             mock_port = MagicMock()
             mock_port.device = "/dev/ttyUSB0"
 
-            result = serialcomm.EmbodySerial._EmbodySerial__port_is_alive(mock_port)  # type: ignore[attr-defined]
+            result = serialcomm.EmbodySerial._EmbodySerial__port_is_alive(mock_port)  # ty: ignore[unresolved-attribute]
 
             assert result is True
             mock_instance.close.assert_called_once()
@@ -58,11 +59,13 @@ class TestShutdownResilience:
         communicator = serialcomm.EmbodySerial(serial_port="Dummy", serial_instance=serial)
 
         # Mock serial to raise on buffer operations
-        with patch.object(serial, "reset_input_buffer", side_effect=OSError("Error")):
-            with patch.object(serial, "reset_output_buffer", side_effect=OSError("Error")):
-                with patch.object(serial, "close", side_effect=SerialException("Error")):
-                    # Should not raise
-                    communicator.shutdown()
+        with (
+            patch.object(serial, "reset_input_buffer", side_effect=OSError("Error")),
+            patch.object(serial, "reset_output_buffer", side_effect=OSError("Error")),
+            patch.object(serial, "close", side_effect=SerialException("Error")),
+        ):
+            # Should not raise
+            communicator.shutdown()
 
     def test_double_shutdown_is_safe(self):
         """Verify calling shutdown twice doesn't cause issues."""
@@ -94,7 +97,7 @@ class TestThreadExecutorManagement:
         serial = DummySerial()
         communicator = serialcomm.EmbodySerial(serial_port="Dummy", serial_instance=serial)
 
-        reader = communicator._EmbodySerial__reader  # type: ignore[attr-defined]
+        reader = communicator._EmbodySerial__reader  # ty: ignore[unresolved-attribute]
 
         # Should have three separate executors
         assert hasattr(reader, "_ReaderThread__message_listener_executor")
@@ -118,7 +121,7 @@ class TestThreadExecutorManagement:
         serial = DummySerial()
         communicator = serialcomm.EmbodySerial(serial_port="Dummy", serial_instance=serial)
 
-        reader = communicator._EmbodySerial__reader  # type: ignore[attr-defined]
+        reader = communicator._EmbodySerial__reader  # ty: ignore[unresolved-attribute]
         msg_executor = reader._ReaderThread__message_listener_executor
         rsp_executor = reader._ReaderThread__response_message_listener_executor
         file_executor = reader._ReaderThread__file_download_listener_executor

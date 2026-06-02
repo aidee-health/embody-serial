@@ -1,15 +1,17 @@
 """Test error handling and validation improvements."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 import pytest
 from embodycodec import codec
 from serial.serialutil import SerialException
 
-from embodyserial.exceptions import MissingResponseError, NackError
+from embodyserial import embodyserial as serialcomm
+from embodyserial.exceptions import MissingResponseError
+from embodyserial.exceptions import NackError
 from embodyserial.helpers import EmbodySendHelper
 from tests.conftest import DummySerial
-from embodyserial import embodyserial as serialcomm
 
 
 @pytest.mark.error_handling
@@ -153,8 +155,10 @@ class TestExceptionSpecificity:
         mock_response = MagicMock(spec=codec.GetAttributeResponse)
         mock_response.value = wrong_attribute
 
-        with patch.object(communicator, "send", return_value=mock_response):
-            with pytest.raises(TypeError, match="Expected TemperatureAttribute, got WrongAttribute"):
-                helper.get_temperature()
+        with (
+            patch.object(communicator, "send", return_value=mock_response),
+            pytest.raises(TypeError, match="Expected TemperatureAttribute, got WrongAttribute"),
+        ):
+            helper.get_temperature()
 
         communicator.shutdown()

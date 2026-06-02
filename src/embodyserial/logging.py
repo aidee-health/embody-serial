@@ -2,6 +2,7 @@
 
 import logging
 
+
 # Library root logger name
 LIBRARY_LOGGER_NAME = "embodyserial"
 

@@ -10,21 +10,24 @@ from embodyserial.embodyserial import EmbodySerial
 from embodyserial.helpers import EmbodySendHelper
 
 
+logger = logging.getLogger(__name__)
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(levelname)s:%(message)s")
-    logging.info("Starting reporting example")
+    logger.info("Starting reporting example")
 
-    logging.info("Setting up communicator")
+    logger.info("Setting up communicator")
     # Connect to first available device
     embody_serial = EmbodySerial()
     send_helper = EmbodySendHelper(sender=embody_serial)
     files = send_helper.get_files()
     if len(files) > 0:
         for name, size in files:
-            logging.info(f"Downloading {name} ({round(size / 1024)}KB)")
+            logger.info("Downloading %s (%sKB)", name, round(size / 1024))
             file_name = embody_serial.download_file(file_name=name, size=size)
-            logging.info(f"Downloaded {file_name} ({round(size / 1024)}KB)")
+            logger.info("Downloaded %s (%sKB)", file_name, round(size / 1024))
     else:
-        logging.info("No files found on device")
+        logger.info("No files found on device")
 
     embody_serial.shutdown()
