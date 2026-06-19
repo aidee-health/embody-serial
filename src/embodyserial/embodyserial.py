@@ -206,9 +206,23 @@ class EmbodySerial(ConnectionListener, EmbodySender):
     def find_serial_ports() -> list[str]:
         """Find all matching serial port names."""
         ports: list[str] = []
-        all_available_ports = serial.tools.list_ports.comports()
+        if sys.platform == "win32":
+            import embodyserial.win32usbhelper as helper
+            all_available_ports = helper.Win32USBHelper().decorate_ports(serial.tools.list_ports.comports())
+        else:
+            all_available_ports = serial.tools.list_ports.comports()
         if not all_available_ports:
             return ports
+
+        for port in all_available_ports:
+            logger.debug("Looking at port: %s with manufacturer=%s description=%s serial_number=%s product=%s", port.name, port.manufacturer, port.description, port.serial_number, port.product)
+            if (
+                not re.search("Datek|Aidee", str(port.manufacturer))
+                and not re.search("IsenseU|G3|EmBody", str(port.description))
+                and sys.platform != "win32"
+            ):
+                continue
+
 
         all_available_ports.sort(key=attrgetter("device"))
         for port in all_available_ports:
@@ -221,6 +235,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
 
             if EmbodySerial.__port_is_alive(port):
                 ports.append(port.device)
+        logger.debug("Ports found: %s", ports)
         return ports
 
     @staticmethod
@@ -229,16 +244,21 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         ports = EmbodySerial.find_serial_ports()
         if not len(ports) > 0:
             raise SerialException("No matching serial ports found")
-
         return ports[0]
 
     @staticmethod
     def __port_is_alive(port: Any) -> bool:
+        port_name = port.device
+        product_desc = port.product
+        
+        # Ultimate fallback if it's still None (or on Linux if empty)
+        if not product_desc:
+            product_desc = port.description
         """Check if port has an active embody device."""
-        logger.debug("Checking candidate port: %s", port)
+        logger.debug("Checking candidate port: %s with product= %s and bus_desc= %s", port, str(port.product), str(product_desc))
         ser = None
         try:
-            ser = serial.Serial(port=port.device, baudrate=BAUD_RATE, timeout=1)
+            ser = serial.Serial(port=port.device, baudrate=BAUD_RATE, timeout=1, write_timeout=1)
             in_waiting = ser.in_waiting
             if in_waiting and in_waiting > 0:
                 logger.debug("Flushing input buffer (%s bytes)", in_waiting)
