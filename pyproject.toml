@@ -99,6 +99,13 @@ unused-ignore-comment = "warn"
 possibly-unresolved-reference = "warn"
 ambiguous-protocol-member = "warn"
 
+[[tool.ty.overrides]]
+include = ["src/embodyserial/win32usbhelper.py"]
+
+[tool.ty.overrides.rules]
+unresolved-attribute = "ignore"
+invalid-assignment = "ignore"
+
 [tool.ty.terminal]
 output-format = "full"             # Provides detailed error messages with full context
 error-on-warning = true            # Treat warning-level rules as failures (config is clean)
