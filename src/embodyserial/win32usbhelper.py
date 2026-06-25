@@ -121,10 +121,6 @@ class Win32USBHelper:
         for port in port_list:
             if port.device in hardware_map:
                 true_label = hardware_map[port.device]
-                port.description = f"{true_label} ({port.device})"
                 port.product = true_label
-                # Strips out generic "Microsoft" if it was tied to the generic serial driver
-                if port.manufacturer == "Microsoft":
-                    port.manufacturer = "Zephyr Project"  # Or your own custom vendor string
 
         return port_list

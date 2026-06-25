@@ -214,15 +214,16 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         if not all_available_ports:
             return ports
 
+        """New approach is to find the single port type we are looking for!"""
         for port in all_available_ports:
-            logger.debug("Looking at port: %s with manufacturer=%s description=%s serial_number=%s product=%s", port.name, port.manufacturer, port.description, port.serial_number, port.product)
-            if (
-                not re.search("Datek|Aidee", str(port.manufacturer))
-                and not re.search("IsenseU|G3|EmBody", str(port.description))
-                and sys.platform != "win32"
-            ):
-                continue
-
+            if (str(port.product)=="EmBody USB"):
+                logger.debug("Accepted port: %s with manufacturer=%s description=%s serial_number=%s product=%s", port.name, port.manufacturer, port.description, port.serial_number, port.product)
+                ports.append(port.device)
+            else:
+                logger.debug("Rejected port: %s with manufacturer=%s description=%s serial_number=%s product=%s", port.name, port.manufacturer, port.description, port.serial_number, port.product)
+        if len(ports):
+            logger.debug("Ports found directly: %s", ports)
+            return ports
 
         all_available_ports.sort(key=attrgetter("device"))
         for port in all_available_ports:
@@ -232,7 +233,6 @@ class EmbodySerial(ConnectionListener, EmbodySender):
                 and sys.platform != "win32"
             ):
                 continue
-
             if EmbodySerial.__port_is_alive(port):
                 ports.append(port.device)
         logger.debug("Ports found: %s", ports)
