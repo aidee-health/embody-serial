@@ -39,6 +39,10 @@ from embodyserial.listeners import MessageListener
 from embodyserial.listeners import ResponseMessageListener
 
 
+if sys.platform == "win32":
+    import embodyserial.win32usbhelper as usbhelper
+
+
 logger = logging.getLogger(__name__)
 
 _T = TypeVar("_T")
@@ -207,8 +211,7 @@ class EmbodySerial(ConnectionListener, EmbodySender):
         """Find all matching serial port names."""
         ports: list[str] = []
         if sys.platform == "win32":
-            import embodyserial.win32usbhelper as helper
-            all_available_ports = helper.Win32USBHelper().decorate_ports(serial.tools.list_ports.comports())
+            all_available_ports = usbhelper.Win32USBHelper().decorate_ports(serial.tools.list_ports.comports())
         else:
             all_available_ports = serial.tools.list_ports.comports()
         if not all_available_ports:
@@ -216,12 +219,26 @@ class EmbodySerial(ConnectionListener, EmbodySender):
 
         """New approach is to find the single port type we are looking for!"""
         for port in all_available_ports:
-            if (str(port.product)=="EmBody USB"):
-                logger.debug("Accepted port: %s with manufacturer=%s description=%s serial_number=%s product=%s", port.name, port.manufacturer, port.description, port.serial_number, port.product)
+            if str(port.product) == "EmBody USB":
+                logger.debug(
+                    "Accepted port: %s with manufacturer=%s description=%s serial_number=%s product=%s",
+                    port.name,
+                    port.manufacturer,
+                    port.description,
+                    port.serial_number,
+                    port.product,
+                )
                 ports.append(port.device)
             else:
-                logger.debug("Rejected port: %s with manufacturer=%s description=%s serial_number=%s product=%s", port.name, port.manufacturer, port.description, port.serial_number, port.product)
-        if len(ports):
+                logger.debug(
+                    "Rejected port: %s with manufacturer=%s description=%s serial_number=%s product=%s",
+                    port.name,
+                    port.manufacturer,
+                    port.description,
+                    port.serial_number,
+                    port.product,
+                )
+        if ports:
             logger.debug("Ports found directly: %s", ports)
             return ports
 
@@ -248,14 +265,13 @@ class EmbodySerial(ConnectionListener, EmbodySender):
 
     @staticmethod
     def __port_is_alive(port: Any) -> bool:
-        port_name = port.device
-        product_desc = port.product
-        
-        # Ultimate fallback if it's still None (or on Linux if empty)
-        if not product_desc:
-            product_desc = port.description
         """Check if port has an active embody device."""
-        logger.debug("Checking candidate port: %s with product= %s and bus_desc= %s", port, str(port.product), str(product_desc))
+        logger.debug(
+            "Checking candidate port: %s with description=%s and bus_desc=%s",
+            port,
+            str(port.description),
+            str(port.product),
+        )
         ser = None
         try:
             ser = serial.Serial(port=port.device, baudrate=BAUD_RATE, timeout=1, write_timeout=1)
